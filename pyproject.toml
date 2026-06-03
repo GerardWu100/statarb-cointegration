@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "statarb-cointegration"
+version = "0.1.0"
+description = "Preserves the notebook workflow as ordered Python step scripts for data download, spread modeling, Monte Carlo simulation, and backtesting."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "numpy>=2.2",
+"pandas>=2.2",
+"pyarrow>=20.0",
+"matplotlib>=3.10",
+"scipy>=1.15",
+"yfinance>=0.2.65",
+"nbformat>=5.10",
+]
+
+[project.scripts]
+statarb-pipeline = "statarb_cointegration.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv]
+package = true
