@@ -1,24 +1,26 @@
 # User guide
 
-## Run the pipeline
+## Run the research pipeline
 
 From the project root:
 
 ```bash
 uv sync
 uv run statarb-pipeline
-uv run statarb-pipeline --smoke
-uv run python scripts/run_pipeline.py --smoke
 ```
 
-## Notebook
+The equivalent thin script is `uv run python scripts/run_pipeline.py`. Use `--config path/to/config.toml` with either command to supply another configuration.
 
-Open `notebooks/demo.ipynb` and run all cells. It imports `statarb_cointegration.pipeline.run_pipeline` directly.
+## Inputs and outputs
 
-## Outputs
+The pipeline reads `data/processed/ko_pep_combined_adj_close_price.parquet`. It writes:
 
-- Processed prices: `data/processed/`
-- Figures: `outputs/figures/`
-- Tables: `outputs/tables/`
+- `outputs/tables/summary.csv`: fitted relation, stationarity tests, and performance metrics;
+- `outputs/tables/daily_backtest.csv`: daily prices, signals, holdings, costs, profit and loss, and marked equity;
+- `outputs/tables/trades.csv`: completed-trade ledger with gross profit and loss, costs, and net profit and loss.
 
-Original notebook and section-to-script map: `docs/reference/`.
+Run `uv run python blog/generate_charts.py` to reproduce the post's figures and frozen derived tables.
+
+## Interpretation
+
+`cointegration_passed=0` means the Engle-Granger p-value exceeded the configured significance level. The pipeline still reports a diagnostic strategy history so the consequence of ignoring that failed prerequisite remains measurable. Do not interpret the diagnostic backtest as approval to trade.

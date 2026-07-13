@@ -2,13 +2,12 @@
 
 ## Part 1: Conceptual Explanation
 
-The `src/` tree holds the installable Python package for this project. All executable logic lives under `statarb_cointegration/`: path configuration, pipeline orchestration, the command-line entrypoint, and notebook-derived step scripts. Scripts at the repository root (`scripts/`) and notebooks only import and call this package.
+The `src/` tree contains the installable research package. Its functions expose the fitted relation, residual tests, causal signal, matched holdings, daily accounting, and generated outputs as ordinary typed Python. Scripts and notebooks call this package instead of owning research logic.
 
 ## Part 2: Code Reference
 
-- `statarb_cointegration/`: Main package. See `statarb_cointegration/GUIDE_statarb_cointegration.md`.
-- `GUIDE_src.md`: This file — overview of the `src/` layout.
+- `statarb_cointegration/`: Main package. See its local guide for formulas, timing, files, and entry points.
 
 ## Part 3: Short Journal
 
-- 2026-05-20: Aligned layout with standard `src/` package structure; CLI moved into the package.
+- 2026-07-13: Removed notebook-style shared state so tests can inspect individual research stages and causal timing directly.

@@ -2,23 +2,26 @@
 
 ## Part 1: Conceptual Explanation
 
-This repository is a notebook-to-project conversion. The notebook reference materials live under `docs/reference/`, and the executable workflow is split into ordered Python step scripts under `src/statarb_cointegration/steps/`. The root folder stays thin: `scripts/` and the `statarb-pipeline` console entry run the pipeline, `pyproject.toml` defines the Python 3.13 environment, `notebooks/` holds the thin execution notebook, `docs/` records the section split and the original notebook, and `data/` plus `outputs/` hold local inputs and generated artifacts.
+This repository is a reproducible, frozen-data study of a KO-PEP cointegration hypothesis. The live path estimates one fixed pre-period price relation, tests its residual for stationarity, computes rolling signals from information available at each close, and backtests holdings that match the same regression hedge.
 
-The execution model intentionally mirrors notebook semantics. Each step script is executed in order inside one shared namespace, so variables, functions, and imported modules persist across sections just as they did in the original notebook. This keeps the code close to the source notebook while moving the reusable logic out of the new notebook wrapper.
+The timing convention is causal. A signal at close $t$ sets holdings for the price move from $t$ to $t+1$. Rolling mean and standard deviation use residuals through $t-1$. Daily equity includes open-position profit and loss, one-way turnover cost, short borrow, and long financing.
+
+`config.toml` is the single place for research parameters. The package reads the frozen processed parquet and writes generated tables under `outputs/`. The bilingual article has its own frozen input and chart workflow under `blog/`. The original notebook under `docs/reference/` is historical evidence, not executable ground truth.
 
 ## Part 2: Code Reference
 
-- `scripts/run_pipeline.py`: Thin wrapper around `statarb_cointegration.cli.main`.
-- `statarb-pipeline` (console script): Same CLI via `pyproject.toml` entry point.
-- `pyproject.toml`: Python 3.13 package metadata and dependencies for `uv`.
-- `src/statarb_cointegration/config.py`: Defines project paths and builds the shared execution context.
-- `src/statarb_cointegration/pipeline.py`: Runs each generated step script in notebook order.
-- `src/statarb_cointegration/steps/`: Notebook-derived Python scripts, one file per major notebook section.
-- `notebooks/demo.ipynb`: Thin notebook that only calls the backend pipeline.
-- `docs/reference/statarb-cointegration.ipynb`: Unchanged copy of the original source notebook.
-- `docs/reference/notebook_split.md`: Maps notebook sections to generated script files.
+- `config.toml`: Training, dates, z-score thresholds, exposure, cost rates, annualization, and significance level.
+- `pyproject.toml`: Python 3.13 package metadata, runtime libraries, test tools, and console entry point.
+- `src/statarb_cointegration/`: Estimation, signal construction, backtest state, and orchestration.
+- `scripts/run_pipeline.py`: Thin wrapper for the package command line.
+- `tests/unit/test_research.py`: Causal-timing, hedge-sign, cost, marking, and failed-test reporting checks.
+- `data/processed/`: Frozen adjusted closes used by the package pipeline.
+- `outputs/tables/`: Generated daily account history, completed trades, and summary.
+- `blog/`: Canonical English and French posts, frozen post data, chart code, and images.
+- `docs/reference/statarb-cointegration.ipynb`: Unchanged original notebook retained for comparison.
 
 ## Part 3: Short Journal
 
-- 2026-04-16: Split the original notebook into ordered step scripts while preserving the raw notebook under `docs/reference/`.
-- 2026-05-20: Moved CLI into `src/statarb_cointegration/cli.py` and `scripts/`; removed duplicate `notebook_reference.md`.
+- 2026-04-16: Split the original notebook into ordered scripts while retaining the source notebook.
+- 2026-07-13: Replaced shared `exec` state with typed functions because the strategy required auditable timing, matched holdings, costs, daily marking, and formal residual tests.
+- 2026-07-13: Kept the failed-cointegration backtest as a labelled diagnostic counterfactual rather than treating it as a deployable strategy.

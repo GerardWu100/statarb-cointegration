@@ -1,25 +1,42 @@
-"""Execute notebook-derived step scripts in original notebook order."""
+"""Orchestrate the frozen-data cointegration research pipeline."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
-from .config import ProjectConfig, build_execution_context
+from .config import ResearchConfig, load_config
+from .research import BacktestResult, fit_cointegration, load_prices, run_backtest
 
 
-def run_pipeline(context_overrides: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Run each generated step script with a shared notebook-style context.
+def run_pipeline(config_path: Path | None = None) -> BacktestResult:
+    """Estimate the pre-period relation and run the cost-aware backtest.
 
-    Steps execute in lexicographic filename order so numeric prefixes preserve
-    notebook section order. Each script mutates the same ``context`` dict.
+    Parameters
+    ----------
+    config_path
+        Optional path to a TOML configuration file.
+
+    Returns
+    -------
+    BacktestResult
+        Daily account history, trade ledger, and summary metrics. The same
+        artifacts are written under ``outputs/tables``.
     """
-    config = ProjectConfig()
-    context = build_execution_context(config=config, context_overrides=context_overrides)
 
-    for step_path in sorted(config.steps_dir.glob('*.py')):
-        context['__file__'] = str(step_path)
-        # exec keeps notebook semantics: later steps see names defined earlier.
-        exec(compile(step_path.read_text(), str(step_path), 'exec'), context)
+    config: ResearchConfig = load_config(config_path)
+    prices = load_prices(config)
+    training = prices.loc[prices.index < config.backtest_start].tail(config.training_observations)
+    if len(training) != config.training_observations:
+        raise ValueError("The price file does not contain the configured training history.")
+    fit = fit_cointegration(training)
+    result = run_backtest(prices, fit, config)
 
-    return context
+    tables_dir = config.outputs_dir / "tables"
+    tables_dir.mkdir(parents=True, exist_ok=True)
+    result.daily.to_csv(tables_dir / "daily_backtest.csv")
+    result.trades.to_csv(tables_dir / "trades.csv", index=False)
+    Path(tables_dir / "summary.csv").write_text(
+        "metric,value\n" + "".join(f"{key},{value}\n" for key, value in result.metrics.items()),
+        encoding="utf-8",
+    )
+    return result

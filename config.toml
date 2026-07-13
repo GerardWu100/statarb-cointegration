@@ -1,0 +1,29 @@
+[research]
+# Number of daily observations used to estimate the fixed cointegrating relation.
+training_observations = 5000
+# First out-of-sample date, inclusive, in YYYY-MM-DD format.
+backtest_start = "2023-10-11"
+# Last out-of-sample date, inclusive, in YYYY-MM-DD format.
+backtest_end = "2025-09-30"
+# Prior residual observations used for each z-score; today's value is excluded.
+rolling_window = 60
+# Enter when the absolute z-score reaches this level but remains below stop_z.
+entry_z = 1.5
+# Exit for mean reversion when the absolute z-score falls to this level.
+exit_z = 0.2
+# Exit for risk control when the absolute z-score reaches this level.
+stop_z = 2.5
+# Starting account value in US dollars.
+initial_capital_usd = 100000.0
+# Gross entry exposure divided by starting capital; 2.0 means 200 percent gross.
+gross_exposure_multiple = 2.0
+# One-way execution cost in basis points of dollar turnover.
+transaction_cost_bps = 5.0
+# Annual fee charged on the marked market value of the short leg.
+short_borrow_rate_annual = 0.01
+# Annual funding charge on the marked market value of the long leg.
+financing_rate_annual = 0.05
+# Trading days per year for cost and performance annualization.
+trading_days_per_year = 252
+# Maximum Engle-Granger p-value that permits the strategy to trade.
+cointegration_significance = 0.05

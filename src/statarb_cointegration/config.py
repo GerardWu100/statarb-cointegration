@@ -1,67 +1,93 @@
-"""Project paths and execution context for the notebook-derived pipeline."""
+"""Typed configuration for the causal cointegration backtest."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+import tomllib
 
 
-@dataclass(slots=True)
-class ProjectConfig:
-    """Filesystem locations used by the generated pipeline."""
+@dataclass(frozen=True, slots=True)
+class ResearchConfig:
+    """Research parameters loaded from ``config.toml``.
 
-    project_root: Path = field(default_factory=lambda: Path(__file__).resolve().parents[2])
-
-    @property
-    def data_dir(self) -> Path:
-        return self.project_root / 'data'
-
-    @property
-    def processed_data_dir(self) -> Path:
-        return self.data_dir / 'processed'
-
-    @property
-    def outputs_dir(self) -> Path:
-        return self.project_root / 'outputs'
-
-    @property
-    def figures_dir(self) -> Path:
-        return self.outputs_dir / 'figures'
-
-    @property
-    def tables_dir(self) -> Path:
-        return self.outputs_dir / 'tables'
-
-    @property
-    def steps_dir(self) -> Path:
-        return Path(__file__).resolve().parent / 'steps'
-
-
-def build_execution_context(config: ProjectConfig, context_overrides: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Build the shared global namespace used when executing step scripts.
-
-    Creates output directories, then seeds path constants and caller overrides.
-    Step scripts read ``OVERRIDES`` for tunables such as ``n_paths`` and ``n_bootstrap``.
+    Parameters
+    ----------
+    project_root
+        Repository root used to resolve all input and output paths.
+    training_observations
+        Number of daily observations in the cointegrating regression.
+    backtest_start, backtest_end
+        Inclusive ISO dates for the out-of-sample evaluation.
+    rolling_window
+        Number of prior residuals used for the causal z-score.
+    entry_z, exit_z, stop_z
+        Absolute z-score thresholds for entry, mean-reversion exit, and stop.
+    initial_capital_usd
+        Starting account value in US dollars.
+    gross_exposure_multiple
+        Target gross market value divided by starting capital at entry.
+    transaction_cost_bps
+        One-way cost per dollar traded, in basis points.
+    short_borrow_rate_annual, financing_rate_annual
+        Annual rates charged on short and long market value.
+    trading_days_per_year
+        Annualization factor for costs and performance statistics.
+    cointegration_significance
+        Engle-Granger p-value threshold reported as the research prerequisite.
     """
-    # Ensure artifact directories exist before any step writes files or figures.
-    config.processed_data_dir.mkdir(parents=True, exist_ok=True)
-    config.figures_dir.mkdir(parents=True, exist_ok=True)
-    config.tables_dir.mkdir(parents=True, exist_ok=True)
 
-    overrides = dict(context_overrides or {})
+    project_root: Path
+    training_observations: int
+    backtest_start: str
+    backtest_end: str
+    rolling_window: int
+    entry_z: float
+    exit_z: float
+    stop_z: float
+    initial_capital_usd: float
+    gross_exposure_multiple: float
+    transaction_cost_bps: float
+    short_borrow_rate_annual: float
+    financing_rate_annual: float
+    trading_days_per_year: int
+    cointegration_significance: float
+    prices_path: Path = field(init=False)
+    outputs_dir: Path = field(init=False)
 
-    context: dict[str, Any] = {
-        '__name__': '__main__',
-        'PROJECT_ROOT': config.project_root,
-        'DATA_DIR': config.data_dir,
-        'PROCESSED_DATA_DIR': config.processed_data_dir,
-        'OUTPUTS_DIR': config.outputs_dir,
-        'FIGURES_DIR': config.figures_dir,
-        'TABLES_DIR': config.tables_dir,
-        'OVERRIDES': overrides,
-        'SMOKE_TEST_MODE': bool(overrides.get('SMOKE_TEST_MODE', False)),
-    }
-    # Caller overrides (for example n_paths) become plain variables in the exec namespace.
-    context.update(overrides)
-    return context
+    def __post_init__(self) -> None:
+        """Derive project paths and reject internally inconsistent settings."""
+
+        if not 0.0 <= self.exit_z < self.entry_z < self.stop_z:
+            raise ValueError("Thresholds must satisfy 0 <= exit_z < entry_z < stop_z.")
+        if self.rolling_window < 2 or self.training_observations <= self.rolling_window:
+            raise ValueError("Training history must exceed a rolling window of at least two observations.")
+        if self.initial_capital_usd <= 0.0 or self.gross_exposure_multiple <= 0.0:
+            raise ValueError("Capital and gross exposure must be positive.")
+        object.__setattr__(
+            self,
+            "prices_path",
+            self.project_root / "data" / "processed" / "ko_pep_combined_adj_close_price.parquet",
+        )
+        object.__setattr__(self, "outputs_dir", self.project_root / "outputs")
+
+
+def load_config(path: Path | None = None) -> ResearchConfig:
+    """Load the single project configuration file.
+
+    Parameters
+    ----------
+    path
+        Optional TOML path. The repository ``config.toml`` is the default.
+
+    Returns
+    -------
+    ResearchConfig
+        Validated immutable research parameters.
+    """
+
+    project_root = Path(__file__).resolve().parents[2]
+    config_path = path or project_root / "config.toml"
+    with config_path.open("rb") as stream:
+        values = tomllib.load(stream)["research"]
+    return ResearchConfig(project_root=project_root, **values)

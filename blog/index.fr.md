@@ -1,160 +1,226 @@
 ---
-title: "Quand une paire cointégrée cesse de l'être"
-description: "Une étude de pairs trading sur KO et PEP qui semblait prometteuse en simulation, a perdu 34 % en backtest et a révélé le coût d'un ratio de couverture instable."
+title: "Quand une stratégie de cointégration échoue à son propre test"
+description: "Un backtest causal sur KO et PEP avec test formel du résidu, positions cohérentes avec le bêta, coûts explicites et valorisation quotidienne."
 date: 2026-07-13
 image: images/cover-cointegration-regime-break.png
 categories: ["Quantitative Research", "Risk Management"]
 ---
 
-# Quand une paire cointégrée cesse de l'être
+# Quand une stratégie de cointégration échoue à son propre test
 
-Coca-Cola et Pepsi semblent former une paire naturelle. Les deux entreprises vendent des produits comparables, subissent plusieurs des mêmes coûts de production et leurs actions ont souvent évolué ensemble. Cette logique économique suffit à envisager une opération de valeur relative. Elle ne prouve pas que la relation entre les prix reviendra vers sa moyenne.
+Coca-Cola et Pepsi semblent former une paire naturelle. Leurs activités partagent une clientèle, des intrants et de grands cycles de consommation. Sur 5 000 séances, la régression par moindres carrés ordinaires de leurs cours donne aussi un impressionnant $R^2=0.960$. La première version du projet a interprété cet ajustement comme une preuve de cointégration, puis construit une stratégie de retour à la moyenne.
 
-Ce projet m'a surtout fourni un bon cas d'échec. Une exécution de contrôle de Monte Carlo sur 10 000 trajectoires donnait un taux de réussite de 69,9 %, un profit et perte (P&L) médian de 3 050 \$ et un ratio de Sharpe simulé de 1,05. Le test historique ultérieur aboutit au résultat inverse. Vingt et une opérations clôturées perdent 34 009 \$ avant frais de transaction, faisant passer un compte de 100 000 \$ à environ 65 991 \$.
+Le test formel raconte une autre histoire. Sur l'échantillon d'estimation figé, le test d'Engle-Granger donne une p-valeur de 0.225. Au seuil habituel de 5 %, le résidu ne permet pas de rejeter la présence d'une racine unitaire. Le backtest historique corrigé garde une valeur diagnostique, mais il ne valide pas une stratégie de cointégration exploitable.
 
-Le code n'a pas cassé. La relation, elle, a changé.
+J'ai reconstruit l'analyse autour de cette distinction. La nouvelle version fige la régression avant la période de test, normalise chaque résidu avec des données retardées, dimensionne les positions avec le même ratio de couverture que le signal, déduit les frais de négociation et de portage, puis valorise le compte chaque jour. Le résultat est plus dur, mais bien plus utile : 13 opérations clôturées perdent 34 869 \$ avant coûts et 46 228 \$ après coûts. Le capital passe de 100 000 \$ à 53 772 \$.
 
-## De deux prix à un seul spread
+## Ce que suppose la cointégration
 
-Notons $P^{KO}_t$ le cours de clôture ajusté de Coca-Cola au jour de bourse $t$, et $P^{PEP}_t$ celui de Pepsi. Le projet estime la régression linéaire des prix par moindres carrés ordinaires
+Notons $P^{KO}_t$ le cours de clôture ajusté de Coca-Cola, en dollars américains par action, à la séance $t$. Notons $P^{PEP}_t$ le cours ajusté de Pepsi dans les mêmes unités. La régression d'estimation est
 
 $$
 P^{KO}_t = \alpha + \beta P^{PEP}_t + \varepsilon_t,
 $$
 
-où $\alpha$ est l'ordonnée à l'origine, $\beta$ le ratio de couverture et $\varepsilon_t$ le résidu de la régression. Il définit ensuite le spread négocié par
+où $\alpha$ est une constante en dollars américains, $\beta$ le nombre d'actions PEP couvertes pour une action KO et $\varepsilon_t$ le résidu en dollars par action KO. En isolant le résidu, on obtient la combinaison linéaire censée revenir vers sa moyenne :
 
 $$
-S_t = P^{KO}_t - \beta P^{PEP}_t.
+\varepsilon_t=P^{KO}_t-\alpha-\beta P^{PEP}_t.
 $$
 
-Sur les 5 000 dernières observations précédant le 9 octobre 2023, les données figées du projet donnent $\beta=0.335$ et $R^2=0.960$. Le coefficient de détermination $R^2$ mesure la part de la variation du cours de KO expliquée par la relation estimée.
+Les valeurs estimées sont $\alpha=4.573$ et $\beta=0.3345$. La constante déplace le niveau du résidu, sans modifier le profit et perte d'une position autofinancée puisque $\Delta\alpha=0$.
 
-Ce $R^2$ élevé est séduisant sur un graphique, mais ce n'est pas un test de cointégration. La cointégration exige que le résidu, ou une combinaison linéaire équivalente de prix non stationnaires, soit stationnaire. Le dépôt n'applique ni test augmenté de Dickey-Fuller aux résidus, ni test d'Engle-Granger, ni test de Johansen. Il est donc plus exact de parler d'une *hypothèse de cointégration* fondée sur un ajustement historique marqué.
-
-Cette nuance compte. Deux séries de prix tendancielles peuvent afficher un $R^2$ élevé, puis s'éloigner durablement.
-
-## Transformer le spread en signal
-
-La stratégie compare le spread à une fenêtre mobile de 60 séances. Notons $L=60$ la longueur de cette fenêtre, $\bar S_{t,L}$ la moyenne mobile du spread et $s_{t,L}$ son écart-type mobile. Le z-score vaut
+Un $R^2$ élevé indique seulement que les deux niveaux de prix ont évolué ensemble dans l'échantillon d'estimation. La cointégration exige que $\varepsilon_t$ soit stationnaire, c'est-à-dire que sa loi de probabilité ne continue pas à dériver dans le temps. Un diagnostic courant repose sur la régression du test augmenté de Dickey-Fuller (ADF) :
 
 $$
-z_t = \frac{S_t-\bar S_{t,L}}{s_{t,L}}.
+\Delta\varepsilon_t = \rho\varepsilon_{t-1} + \sum_{i=1}^{p}\gamma_i\Delta\varepsilon_{t-i}+u_t,
 $$
 
-Le backtest historique entre acheteur sur le spread lorsque $z_t<-1.5$ et vendeur lorsque $z_t>1.5$. La position est fermée près de la moyenne si $|z_t|<0.2$, ou coupée si $|z_t|>2.5$.
+où $\Delta\varepsilon_t=\varepsilon_t-\varepsilon_{t-1}$ est la variation journalière du résidu, $p$ le nombre de variations retardées, $\gamma_i$ des coefficients auxiliaires et $u_t$ une erreur imprévisible. L'hypothèse nulle est $\rho=0$, soit une racine unitaire. L'hypothèse stationnaire est $\rho<0$.
 
-La construction des positions pose toutefois un problème. Le signal emploie le $\beta$ estimé, tandis que le portefeuille achète environ 100 000 \$ d'une action et vend environ 100 000 \$ de l'autre. Les jambes sont presque neutres en dollars, mais pas neutres selon le bêta de la régression. Le modèle et les positions réelles portent donc sur deux combinaisons linéaires différentes de KO et PEP. Une mise en production devrait d'abord fixer la définition de l'exposition, puis l'appliquer sans changement au signal, à la simulation, au profit et perte et aux mesures de risque.
+Le test ADF ordinaire donne une statistique de -2.630 et une p-valeur de 0.087. Comme le résidu a été estimé au lieu d'être observé, le test d'Engle-Granger applique la loi de MacKinnon appropriée. Sa statistique vaut -2.631 et sa p-valeur 0.225. Aucun des deux tests ne rejette l'hypothèse de racine unitaire à 5 %.
 
-## Comment la simulation impose le retour à la moyenne
+| Diagnostic d'estimation | Valeur | Décision à 5 % |
+|---|---:|---|
+| $R^2$ de la régression des prix | 0.960 | Ce n'est pas un test de stationnarité |
+| P-valeur ADF du résidu | 0.087 | Ne pas rejeter la racine unitaire |
+| P-valeur d'Engle-Granger | 0.225 | Ne pas rejeter l'absence de cointégration |
 
-La simulation part de mouvements browniens géométriques corrélés. Pour l'action $i$, KO ou PEP, la mise à jour journalière est
-
-$$
-P_{i,t+1}=P_{i,t}\exp\left[\left(\mu_i-\frac{1}{2}\sigma_i^2\right)\Delta t+\sigma_i\sqrt{\Delta t}\,\epsilon_{i,t}\right].
-$$
-
-Ici, $\mu_i$ désigne la dérive quotidienne, $\sigma_i$ la volatilité quotidienne, $\Delta t=1$ séance et $\epsilon_{i,t}$ un choc suivant une loi normale centrée réduite. Une factorisation de Cholesky donne aux chocs de KO et PEP leur corrélation estimée, proche de 0,689.
-
-Le projet ajoute un processus d'Ornstein-Uhlenbeck pour ramener le spread vers une cible récente :
-
-$$
-dS_t=\kappa(\theta-S_t)dt+\sigma_S dW_t.
-$$
-
-Le paramètre $\kappa$ est la vitesse de retour à la moyenne, $\theta$ le spread cible, $\sigma_S$ la diffusion du spread et $W_t$ un mouvement brownien. La demi-vie supposée est de $h=10$ séances, d'où
-
-$$
-\kappa=\frac{\ln 2}{h}=0.0693.
-$$
-
-Un détail de l'implémentation est particulièrement soigné. Si $A_t$ représente l'ajustement d'Ornstein-Uhlenbeck sur une journée, le code le répartit entre les deux actions selon
-
-$$
-w_{KO}=\frac{1}{1+\beta^2}, \qquad w_{PEP}=\frac{\beta}{1+\beta^2}.
-$$
-
-Si ces montants sont appliqués comme des variations additives des prix, le cours de KO reçoit $w_{KO}A_t$ et celui de PEP reçoit $-w_{PEP}A_t$. La variation du spread devient alors
-
-$$
-\Delta S_t=w_{KO}A_t-\beta(-w_{PEP}A_t)
-=A_t\frac{1+\beta^2}{1+\beta^2}=A_t.
-$$
-
-Le code divise toutefois ces deux montants par le cours courant, puis les place dans une mise à jour exponentielle du rendement. L'identité ci-dessus n'est donc exacte qu'au premier ordre lorsque $A_t/P_{i,t}$ est petit, et non pour un pas fini. Voici le bloc essentiel de l'implémentation :
+Le code signale ce prérequis manquant au lieu de le masquer :
 
 ```python
-weight_ko = 1 / (1 + beta**2)
-weight_pep = beta / (1 + beta**2)
-
-current_spread = ko_prices[:, day] - beta * pep_prices[:, day]
-ou_drift = kappa * (spread_mean - current_spread) * dt
-ou_diffusion = spread_volatility * np.sqrt(dt) * z[:, 2]
-ou_adjustment = ou_drift + ou_diffusion
-
-ko_ou_return = (ou_adjustment * weight_ko) / ko_prices[:, day]
-pep_ou_return = -(ou_adjustment * weight_pep) / pep_prices[:, day]
+adf_statistic, adf_pvalue, *_ = adfuller(
+    residual, regression="c", autolag="AIC"
+)
+eg_statistic, eg_pvalue, _ = coint(
+    y, x, trend="c", autolag="aic"
+)
 ```
 
-La répartition est raisonnable lorsque les ajustements quotidiens restent petits. La question difficile est ailleurs : une demi-vie de dix séances et une cible fixe proche de zéro décrivent-elles les deux années suivantes ? La simulation suppose que oui.
+Le second appel fournit le test formel de cointégration fondé sur les résidus. Le premier reste utile, car il expose directement le test autorégressif sous-jacent.
 
-## Le risque à l'intérieur du modèle
+## Un signal causal
 
-Le projet valorise un portefeuille dont l'exposition brute approche 200 % : une jambe longue de 100 000 \$ et une jambe courte de 100 000 \$, pour un capital de 100 000 \$. Notons $L_H$ la perte en dollars à l'horizon $H$, et $q_c(L_H)$ son quantile au niveau de confiance $c$. La valeur à risque et l'Expected Shortfall sont définis par
-
-$$
-\operatorname{VaR}_c=q_c(L_H),
-$$
+Soit $L=60$ la longueur de la fenêtre mobile. La moyenne disponible à la clôture $t$ n'utilise que les résidus connus jusqu'à $t-1$ :
 
 $$
-\operatorname{ES}_c=\mathbb{E}\left[L_H\mid L_H\geq \operatorname{VaR}_c\right].
+\bar\varepsilon_{t,L}=\frac{1}{L}\sum_{j=1}^{L}\varepsilon_{t-j}.
 $$
 
-À 60 jours, l'exécution de contrôle sur 10 000 trajectoires estime la valeur à risque (VaR) à 95 % à 4 472 \$ et l'Expected Shortfall (ES) à 95 % à 5 788 \$. Autrement dit, 5 % des scénarios simulés perdent plus de 4 472 \$, et la perte moyenne au sein de ces 5 % atteint 5 788 \$.
+Son écart-type empirique vaut
 
-La même exécution donne des valeurs à risque à 95 % nettement supérieures par rééchantillonnage historique (10 694 \$) et par calcul paramétrique normal (11 095 \$). Cet écart entre méthodes constitue déjà un avertissement : l'estimation de la queue dépend autant du modèle de rendements que du portefeuille.
+$$
+s_{t,L}=\sqrt{\frac{1}{L-1}\sum_{j=1}^{L}
+(\varepsilon_{t-j}-\bar\varepsilon_{t,L})^2}.
+$$
 
-## Le régime s'est déplacé
+Le signal est donc
 
-Sur les 60 séances précédant l'opération, la moyenne du spread était de 0,004 \$ et son écart-type de 0,769 \$. Ces valeurs déterminent la cible et la diffusion de la simulation. Le graphique applique le ratio de couverture fixe estimé sur 20 ans à l'échantillon quotidien figé jusqu'au 30 septembre 2025.
+$$
+z_t=\frac{\varepsilon_t-\bar\varepsilon_{t,L}}{s_{t,L}}.
+$$
 
-![Spread KO-PEP à bêta fixe avant et après la date de calibration](images/01_spread_regime_shift.png)
+Le décalage d'une journée compte. Si le résidu courant entrait dans sa propre moyenne et son propre écart-type, le seuil s'adapterait en partie à l'observation qui déclenche l'ordre. L'implémentation rend ce calendrier explicite :
 
-Après la date de calibration, le spread n'oscille plus autour de zéro. Il monte durablement, avec une moyenne de 12,20 \$ et un écart-type de 8,19 \$ pendant le backtest. Cette volatilité vaut 10,6 fois l'estimation de calibration. Le retour vers l'ancienne cible est devenu une mauvaise prévision conditionnelle.
+```python
+residual = prices["KO"] - fit.alpha_usd - fit.beta * prices["PEP"]
+lagged = residual.shift(1)
+rolling_mean = lagged.rolling(rolling_window).mean()
+rolling_std = lagged.rolling(rolling_window).std(ddof=1)
+z_score = (residual - rolling_mean) / rolling_std
+```
 
-Une nouvelle estimation de la relation par période rend la rupture encore plus nette.
+Un signal observé à la clôture $t$ fixe les positions après cette clôture. Ces positions gagnent ou perdent sur les variations de prix entre $t$ et $t+1$. Aucune position ne reçoit un mouvement antérieur à l'existence de son signal.
 
-![Ratio de couverture, qualité de la régression et volatilité du spread par période](images/02_parameter_drift.png)
+La stratégie achète le résidu pour $-2.5<z_t\leq-1.5$ et le vend pour $1.5\leq z_t<2.5$. Elle clôture lorsque $|z_t|\leq0.2$, déclenche son stop lorsque $|z_t|\geq2.5$ et liquide toute position restante à la fin de l'échantillon. Lorsqu'elle est à plat, elle n'ouvre pas une position déjà au-delà du seuil de stop.
 
-Le ratio de couverture estimé passe de 0,335 sur 20 ans à 0,197 pendant les deux années précédant l'opération, puis devient négatif à -0,216 durant le backtest. Dans le même temps, $R^2$ tombe de 0,960 à 0,197. Un coefficient de long terme stable ne devrait pas se comporter ainsi. Avant même octobre 2023, l'estimation sur deux ans signalait que celle sur 20 ans mélangeait plusieurs régimes.
+![Résidu fixe de KO et PEP avec bande d'entrée retardée](images/01_spread_regime_shift.png)
 
-## Confiance en simulation, perte en historique
+La hausse du résidu après 2023 ne se résume pas à quelques franchissements de seuil. Son niveau s'est déplacé. Un z-score mobile peut normaliser cette dérive, mais cette normalisation ne rend pas stationnaire une relation qui ne l'est pas.
 
-La stratégie historique reprend les seuils de z-score sur 60 jours, les quantités fixes et le ratio de couverture historique du projet. Elle clôture 21 opérations entre octobre 2023 et septembre 2025. Six sont gagnantes, soit un taux de réussite de 28,6 %. Le profit et perte total atteint -34 009 \$ avant frais de transaction, coût d'emprunt des titres, dividendes dus sur la jambe courte ou impact de marché. La durée de détention moyenne est de 20,2 jours calendaires.
+## Faire correspondre les positions à l'équation
 
-![Courbe de capital historique après chaque opération clôturée](images/03_backtest_equity.png)
+L'ancien portefeuille utilisait des jambes presque égales en dollars alors que le signal était $P^{KO}_t-\beta P^{PEP}_t$. Il s'agissait de deux portefeuilles différents. Les positions corrigées reproduisent le résidu estimé.
 
-La courbe ne mesure le capital qu'à la clôture d'une opération, comme le fait le projet. Ce n'est pas une valorisation quotidienne au marché. Elle omet donc une partie de l'information nécessaire au calcul du drawdown et du risque de marge. Même avec cette omission favorable, le résultat est mauvais. La pire opération perd 11 490 \$, contre un gain de 3 342 \$ pour la meilleure.
+Notons $s_t\in\{-1,0,1\}$ la direction vendeuse, neutre ou acheteuse du résidu. Soit $q_t>0$ le nombre de base d'actions KO. Les positions après la clôture $t$ sont
 
-Le tableau sépare volontairement l'échantillon simulé de l'échantillon historique :
+$$
+q^{KO}_t=s_tq_t,
+$$
 
-| Mesure | Simulation sur 10 000 trajectoires | Backtest historique |
-|---|---:|---:|
-| Taux de réussite | 69.9% | 28.6% |
-| P&L simulé médian / P&L total du backtest | \$3,050 | -\$34,009 |
-| Ratio de Sharpe | 1.05 | Non calculé à partir de rendements quotidiens valorisés au marché |
-| Opérations clôturées | Opérations simulées dépendantes de la trajectoire | 21 |
+$$
+q^{PEP}_t=-s_t\beta q_t.
+$$
 
-La simulation n'est pas « fausse » au regard de ses propres hypothèses. Elle répond à une question plus étroite : que se passe-t-il si les chocs de prix restent corrélés et si une force d'Ornstein-Uhlenbeck continue de ramener l'ancien spread vers l'ancienne cible ? Le backtest indique ce qui s'est produit quand ces deux hypothèses de stabilité ont cessé de tenir.
+Leur profit et perte brut sur une journée est
 
-## Ce que je changerais avant de négocier cette paire
+$$
+\Pi^{gross}_{t+1}=q^{KO}_t\Delta P^{KO}_{t+1}
++q^{PEP}_t\Delta P^{PEP}_{t+1}.
+$$
 
-Je commencerais par tester le résidu. Une procédure d'Engle-Granger mobile ou un test augmenté de Dickey-Fuller sur un résidu hors échantillon permettrait de vérifier si la stationnarité est suffisamment étayée pour justifier un modèle de retour à la moyenne. Il faudrait accompagner ce test de contrôles de stabilité sur $\beta$, et non le traiter comme un certificat définitif.
+En remplaçant les positions, on obtient
 
-Je séparerais ensuite la sélection du modèle de l'évaluation des opérations. Estimer $\beta$, choisir la fenêtre de 60 jours, fixer les seuils d'entrée et juger la performance sur des données qui se chevauchent crée du biais de sélection et du lookahead, c'est-à-dire l'emploi d'une information qui n'aurait pas été disponible à la date de décision. Une procédure walk-forward estimerait les paramètres sur une fenêtre, les figerait, puis évaluerait la fenêtre suivante.
+$$
+\Pi^{gross}_{t+1}=s_tq_t
+(\Delta P^{KO}_{t+1}-\beta\Delta P^{PEP}_{t+1})
+=s_tq_t\Delta\varepsilon_{t+1}.
+$$
 
-Les positions devraient aussi correspondre au spread. Si le signal est $P^{KO}-\beta P^{PEP}$, le ratio entre les quantités doit suivre ce même $\beta$, après prise en compte du capital et des contraintes de risque. Des jambes de même montant constituent un autre portefeuille et demandent leur propre modèle de signal.
+Le profit et perte négocié correspond maintenant exactement à la variation du résidu modélisé, multipliée par $s_tq_t$. Le signe de la couverture est sans ambiguïté : lorsque $\beta>0$, acheter le résidu revient à acheter KO et à vendre $\beta$ action PEP pour chaque action KO.
 
-Enfin, il faut valoriser les positions chaque jour et facturer le coût réel de l'opération. Les commissions sont probablement le poste le moins préoccupant ici. Le bid-ask spread, le coût d'emprunt, les dividendes dus sur la vente à découvert, le financement et les sorties forcées peuvent peser davantage avec une exposition brute de 200 % et des positions détenues plusieurs semaines.
+À chaque entrée, l'exposition brute cible vaut $G=2C_0$, avec un capital initial $C_0=\$100{,}000$. L'échelle est
 
-Le résultat le plus instructif du projet n'est pas le ratio de Sharpe simulé. C'est le diagnostic de son échec hors échantillon : un ajustement élevé sur l'ensemble des données cachait un coefficient instable, la simulation imposait le retour à la moyenne qu'elle semblait ensuite observer, et le portefeuille négocié ne correspondait pas exactement au spread modélisé. En pairs trading, la stabilité de la relation fait partie du modèle de risque.
+$$
+q_t=\frac{G}{P^{KO}_t+|\beta|P^{PEP}_t}.
+$$
+
+Cette formule donne une exposition brute de 200 % tout en respectant le ratio de la régression. Elle ne garantit ni la neutralité au bêta du marché, ni la neutralité sectorielle, ni la neutralité en dollars. Ces contraintes demanderaient une construction différente.
+
+## Coûts et valorisation quotidienne
+
+Le backtest facture 5 points de base (pbs) par dollar de volume dans un sens. Un point de base vaut 0,01 %, donc 5 pbs valent 0,05 %. Si $c=5/10{,}000$ et si $\Delta q^i_t$ est la variation du nombre d'actions de l'actif $i$, le coût de transaction est
+
+$$
+C^{trade}_t=c\sum_i|\Delta q^i_t|P^i_t.
+$$
+
+La valeur de marché vendue à découvert supporte un coût d'emprunt annuel de 1 %. La valeur acheteuse supporte un coût de financement annuel de 5 %. Avec $252$ séances par an,
+
+$$
+C^{carry}_t=\frac{0.01\,V^{short}_{t-1}+0.05\,V^{long}_{t-1}}{252},
+$$
+
+où $V^{short}_{t-1}$ et $V^{long}_{t-1}$ sont des valeurs de marché positives à la clôture précédente. Ces hypothèses restent simplifiées. Les conditions du prime broker, les dividendes dus sur les titres vendus, la disponibilité de l'emprunt, le bid-ask spread et l'impact de marché peuvent modifier la facture.
+
+Le profit et perte net journalier est
+
+$$
+\Pi^{net}_t=\Pi^{gross}_t-C^{trade}_t-C^{carry}_t,
+$$
+
+et les capitaux propres valorisés chaque jour suivent
+
+$$
+E_t=E_{t-1}+\Pi^{net}_t.
+$$
+
+Cette comptabilité enregistre chaque jour les gains et pertes des positions ouvertes. L'ancienne courbe, mise à jour seulement à la clôture d'une opération, ne pouvait mesurer le chemin entre deux sorties. Elle ne convenait donc ni au calcul du drawdown ni à l'analyse de marge.
+
+## Résultat corrigé
+
+Le test couvre 494 clôtures quotidiennes, du 11 octobre 2023 au 30 septembre 2025. Tous les coefficients de la régression sont figés à partir des 5 000 observations précédentes.
+
+| Mesure | Valeur corrigée |
+|---|---:|
+| Opérations clôturées | 13 |
+| Opérations rentables | 30.8% |
+| Profit et perte brut | -\$34,869 |
+| Coûts de transaction | \$2,613 |
+| Coûts d'emprunt des ventes | \$1,580 |
+| Coûts de financement des achats | \$7,167 |
+| Coûts totaux | \$11,359 |
+| Profit et perte net | -\$46,228 |
+| Rendement total | -46.23% |
+| Ratio de Sharpe journalier annualisé | -1.77 |
+| Drawdown quotidien maximal | -47.31% |
+
+Le ratio de Sharpe annualisé est la moyenne des rendements nets journaliers divisée par leur écart-type empirique, puis multipliée par $\sqrt{252}$. Aucun taux sans risque n'est retranché, car le coût de financement figure déjà dans le profit et perte journalier.
+
+![Capitaux propres bruts et nets quotidiens avec drawdown](images/03_backtest_equity.png)
+
+Les coûts expliquent 11 359 \$ de perte, mais ils ne sont pas la cause initiale de l'échec. Le profit et perte brut était déjà de -34 869 \$. Le financement domine le modèle de coûts, car la stratégie conserve longtemps une exposition brute proche de 200 %.
+
+La version corrigée clôture 13 opérations contre 21 auparavant. Trois changements expliquent l'écart : les positions suivent désormais le $\beta$ estimé, la règle d'entrée refuse d'ouvrir au-delà du stop et un seul automate causal gère les positions au lieu d'une comptabilité limitée aux opérations achevées.
+
+## Une relation instable en plus d'être non stationnaire
+
+La réestimation par période ne fait pas partie de la règle de trading. Elle sert uniquement au diagnostic après le test.
+
+![Stabilité de la régression selon les échantillons](images/02_parameter_drift.png)
+
+Les trois panneaux racontent la même histoire sous des angles différents : la pente estimée n'a pas persisté, le pouvoir explicatif a fortement baissé et le résidu est devenu beaucoup plus volatil pendant le test.
+
+| Échantillon | $\beta$ | $R^2$ | Volatilité du résidu |
+|---|---:|---:|---:|
+| Estimation sur 5 000 jours | 0.335 | 0.960 | \$2.72 |
+| Deux années précédentes | 0.198 | 0.436 | \$2.14 |
+| Période de backtest | -0.216 | 0.197 | \$5.09 |
+
+Le ratio de couverture change de signe pendant le test, la qualité de l'ajustement s'effondre et la volatilité du résidu est presque deux fois supérieure à celle du long échantillon d'estimation. Ce tableau emploie les données futures de la période de test uniquement pour le diagnostic. Réinjecter ces estimations dans les opérations antérieures constituerait un biais d'anticipation.
+
+## Ce que montre réellement le résultat
+
+L'étude montre que la spécification KO-PEP initiale ne satisfait pas son hypothèse statistique et perd de l'argent avec une comptabilité historique cohérente. Elle ne prouve pas que KO et PEP ne peuvent jamais soutenir une opération de valeur relative. Une autre spécification pourrait employer les logarithmes des prix, une fenêtre d'estimation plus courte, des fondamentaux, une couverture des facteurs de marché et de secteur ou un coefficient variable dans le temps. Chaque variante crée une nouvelle hypothèse qui exige un échantillon de test intact.
+
+Les clôtures ajustées restent aussi une approximation imparfaite de l'exécution. Elles intègrent les ajustements de splits et de dividendes dans l'historique, alors qu'une vente à découvert réelle paie les dividendes en espèces et se négocie au prix de marché non ajusté. Un backtest destiné à la production devrait employer des opérations sur titres connues à chaque date, des cours acheteur et vendeur exécutables, la disponibilité de l'emprunt et le modèle de financement du courtier.
+
+L'échec du test d'Engle-Granger doit servir de filtre, pas de note de bas de page. Le backtest diagnostique reste dans le projet parce qu'il chiffre la conséquence financière d'un filtre ignoré. Le $R^2$ élevé était bien réel. Il répondait simplement à la mauvaise question.
+
+## Références
+
+- Robert F. Engle et Clive W. J. Granger, [« Co-integration and Error Correction: Representation, Estimation, and Testing »](https://doi.org/10.2307/1913236), *Econometrica*, 1987.
+- David A. Dickey et Wayne A. Fuller, [« Distribution of the Estimators for Autoregressive Time Series With a Unit Root »](https://doi.org/10.1080/01621459.1979.10482531), *Journal of the American Statistical Association*, 1979.
+- James G. MacKinnon, [« Critical Values for Cointegration Tests »](http://qed.econ.queensu.ca/working_papers/papers/qed_wp_1227.pdf), document de travail 1227 du département d'économie de Queen's, 2010.
+- Evan Gatev, William N. Goetzmann et K. Geert Rouwenhorst, [« Pairs Trading: Performance of a Relative-Value Arbitrage Rule »](https://doi.org/10.1093/rfs/hhj020), *Review of Financial Studies*, 2006.
+- Développeurs de statsmodels, [documentation du test d'Engle-Granger `coint`](https://www.statsmodels.org/stable/generated/statsmodels.tsa.stattools.coint.html), interface de la version 0.14.6 employée par ce projet.

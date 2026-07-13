@@ -2,19 +2,29 @@
 
 ## Part 1: Conceptual Explanation
 
-The `statarb_cointegration` package is a thin execution layer around the original notebook logic. `config.py` defines where inputs and outputs live, `pipeline.py` executes the notebook-derived step files in order, `cli.py` exposes the command-line entrypoint, and `steps/` contains the copied notebook code grouped by major heading. This design preserves the original linear workflow while removing backend logic from the new notebook wrapper.
+The package estimates a fixed pre-period relation
 
-The `steps/` folder is intentionally procedural. Each file corresponds to a notebook section and expects the shared context created by the pipeline. That context includes filesystem paths, runtime overrides, and any variables created by earlier sections. The result is notebook parity without keeping the operational logic inside `.ipynb` files.
+$$
+P^{KO}_t=\alpha+\beta P^{PEP}_t+\varepsilon_t
+$$
+
+and tests whether the fitted residual $\varepsilon_t$ is stationary. It reports both the ordinary Augmented Dickey-Fuller diagnostic and the Engle-Granger test, whose critical-value distribution accounts for estimating the residual.
+
+The rolling z-score uses a mean and sample standard deviation built from the prior $L$ residuals. A signal at close $t$ selects holdings for the move from $t$ to $t+1$. For direction $s_t$ and scale $q_t$, KO shares equal $s_tq_t$ and PEP shares equal $-s_t\beta q_t$. Gross profit and loss is therefore $s_tq_t\Delta\varepsilon_{t+1}$.
+
+Daily account value subtracts one-way turnover cost plus annualized short-borrow and long-financing charges. Open positions are marked every day. A completed-trade ledger is derived from the same daily state rather than maintained as a separate accounting system.
 
 ## Part 2: Code Reference
 
-- `config.py`: Path configuration and context assembly for step execution.
-- `pipeline.py`: Sequentially executes all files in `steps/` with one shared namespace.
-- `cli.py`: Argument parsing and smoke-test overrides for CLI runs.
-- `steps/*.py`: Notebook-derived code files ordered by notebook section.
+- `config.py`: `ResearchConfig` validates thresholds and resolves project paths; `load_config` reads `config.toml`.
+- `research.py`: `fit_cointegration` estimates the relation and tests its residual; `compute_causal_signal` builds lagged z-scores; `_target_holdings` replicates the hedge; `run_backtest` owns the state machine, costs, daily marking, trades, and metrics.
+- `pipeline.py`: `run_pipeline` loads frozen prices, selects the pre-period sample, calls the research functions, and writes the three CSV outputs.
+- `cli.py`: `main` accepts an optional configuration path and prints summary metrics.
+- `__init__.py`: Package marker.
+
+Start with `research.py` for the financial logic and `pipeline.py` for the executable flow.
 
 ## Part 3: Short Journal
 
-- 2026-04-16: Kept notebook semantics by executing ordered step scripts inside one shared context instead of rewriting the workflow into new abstractions.
-- 2026-05-19: Simplified step scripts for readability (vectorized bootstrap and mean-reversion exit timing, shared smoke overrides for `n_paths` and `n_bootstrap`).
-- 2026-05-20: Moved CLI from repository root into `cli.py`.
+- 2026-07-13: The Engle-Granger p-value of 0.225 failed the 5% research prerequisite; the package reports that failure while retaining the backtest as a diagnostic counterfactual.
+- 2026-07-13: Position sizing now uses the regression hedge exactly, and daily equity includes transaction, borrow, and financing costs.

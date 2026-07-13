@@ -6,9 +6,10 @@ The `scripts/` folder holds thin entrypoints that parse arguments (when needed) 
 
 ## Part 2: Code Reference
 
-- `run_pipeline.py`: Calls `statarb_cointegration.cli.main()` to run the full notebook-derived pipeline.
+- `run_pipeline.py`: Calls `statarb_cointegration.cli.main()` to run the configured frozen-data study.
 - Console alternative: `uv run statarb-pipeline` (defined in `pyproject.toml`).
 
 ## Part 3: Short Journal
 
 - 2026-05-20: Moved root `run_pipeline.py` here during project-structure refactor.
+- 2026-07-13: Kept the script as a thin wrapper after the backend moved from notebook fragments to typed research functions.

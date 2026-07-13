@@ -5,17 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "statarb-cointegration"
 version = "0.1.0"
-description = "Preserves the notebook workflow as ordered Python step scripts for data download, spread modeling, Monte Carlo simulation, and backtesting."
+description = "Tests and backtests a fixed KO-PEP cointegration relation with causal signals, matched holdings, explicit costs, and daily marking."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "numpy>=2.2",
-"pandas>=2.2",
-"pyarrow>=20.0",
-"matplotlib>=3.10",
-"scipy>=1.15",
-"yfinance>=0.2.65",
-"nbformat>=5.10",
+    "pandas>=2.2",
+    "pyarrow>=20.0",
+    "matplotlib>=3.10",
+    "statsmodels>=0.14.6",
 ]
 
 [project.scripts]
@@ -26,3 +24,9 @@ where = ["src"]
 
 [tool.uv]
 package = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.15.21",
+]
