@@ -1,0 +1,12 @@
+metric,value
+monte_carlo_paths,10000
+bootstrap_paths,10000
+random_seed,111111
+strategy_win_rate,0.699
+strategy_median_pnl_usd,3050.04
+strategy_sharpe_ratio,1.05
+portfolio_var_95_loss_usd,4471.87
+portfolio_expected_shortfall_95_loss_usd,5788.20
+average_max_drawdown,-0.0738
+historical_simulation_var_95_loss_usd,10694.14
+parametric_var_95_loss_usd,11094.77
