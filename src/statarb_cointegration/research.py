@@ -349,7 +349,11 @@ def run_backtest(
             fit.engle_granger_pvalue <= config.cointegration_significance
         ),
         "completed_trades": float(len(trade_frame)),
-        "win_rate": float((trade_frame["net_pnl_usd"] > 0.0).mean()),
+        # An empty ledger has no columns, so the win rate is undefined rather
+        # than zero. Reporting NaN keeps a no-trade configuration runnable.
+        "win_rate": float((trade_frame["net_pnl_usd"] > 0.0).mean())
+        if not trade_frame.empty
+        else np.nan,
         "gross_pnl_usd": float(daily["gross_pnl_usd"].sum()),
         "total_cost_usd": float(
             daily[["transaction_cost_usd", "borrow_cost_usd", "financing_cost_usd"]].sum().sum()
