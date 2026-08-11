@@ -25,9 +25,13 @@ def run_pipeline(config_path: Path | None = None) -> BacktestResult:
 
     config: ResearchConfig = load_config(config_path)
     prices = load_prices(config)
-    training = prices.loc[prices.index < config.backtest_start].tail(config.training_observations)
+    training = prices.loc[prices.index < config.backtest_start].tail(
+        config.training_observations
+    )
     if len(training) != config.training_observations:
-        raise ValueError("The price file does not contain the configured training history.")
+        raise ValueError(
+            "The price file does not contain the configured training history."
+        )
     fit = fit_cointegration(training)
     result = run_backtest(prices, fit, config)
 
@@ -36,7 +40,8 @@ def run_pipeline(config_path: Path | None = None) -> BacktestResult:
     result.daily.to_csv(tables_dir / "daily_backtest.csv")
     result.trades.to_csv(tables_dir / "trades.csv", index=False)
     Path(tables_dir / "summary.csv").write_text(
-        "metric,value\n" + "".join(f"{key},{value}\n" for key, value in result.metrics.items()),
+        "metric,value\n"
+        + "".join(f"{key},{value}\n" for key, value in result.metrics.items()),
         encoding="utf-8",
     )
     return result

@@ -6,7 +6,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 from statarb_cointegration.config import ResearchConfig
 from statarb_cointegration.research import (
     CointegrationFit,
@@ -93,25 +92,35 @@ def test_costs_reduce_daily_marked_equity() -> None:
     """Explicit costs must lower final equity without changing gross P&L."""
 
     dates = pd.bdate_range("2023-12-20", periods=20, name="date")
-    residual = np.array([0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 3, 2, 0, -2, 0, 2, 0, -2, 0, 0], dtype=float)
+    residual = np.array(
+        [0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 3, 2, 0, -2, 0, 2, 0, -2, 0, 0], dtype=float
+    )
     prices = pd.DataFrame({"PEP": 100.0, "KO": 60.0 + residual}, index=dates)
     with_cost = run_backtest(prices, make_fit(), make_config())
     no_cost_config = make_config(
-        transaction_cost_bps=0.0, short_borrow_rate_annual=0.0, financing_rate_annual=0.0
+        transaction_cost_bps=0.0,
+        short_borrow_rate_annual=0.0,
+        financing_rate_annual=0.0,
     )
     without_cost = run_backtest(prices, make_fit(), no_cost_config)
     assert len(with_cost.daily) == len(prices.loc["2024-01-01":"2024-01-12"])
     assert with_cost.daily["equity_usd"].nunique() > 1
     # Holdings selected at close t-1 must explain exactly the gross P&L at t.
     prior_holdings = with_cost.daily[["ko_shares", "pep_shares"]].shift(1).fillna(0.0)
-    price_changes = with_cost.daily[["ko_price_usd", "pep_price_usd"]].diff().fillna(0.0)
+    price_changes = (
+        with_cost.daily[["ko_price_usd", "pep_price_usd"]].diff().fillna(0.0)
+    )
     traced_gross_pnl = (
         prior_holdings["ko_shares"] * price_changes["ko_price_usd"]
         + prior_holdings["pep_shares"] * price_changes["pep_price_usd"]
     )
     np.testing.assert_allclose(with_cost.daily["gross_pnl_usd"], traced_gross_pnl)
-    assert np.isclose(with_cost.trades["net_pnl_usd"].sum(), with_cost.daily["net_pnl_usd"].sum())
-    assert np.isclose(with_cost.metrics["gross_pnl_usd"], without_cost.metrics["gross_pnl_usd"])
+    assert np.isclose(
+        with_cost.trades["net_pnl_usd"].sum(), with_cost.daily["net_pnl_usd"].sum()
+    )
+    assert np.isclose(
+        with_cost.metrics["gross_pnl_usd"], without_cost.metrics["gross_pnl_usd"]
+    )
     assert with_cost.metrics["net_pnl_usd"] < without_cost.metrics["net_pnl_usd"]
     assert with_cost.metrics["total_cost_usd"] > 0.0
 
@@ -120,7 +129,9 @@ def test_cointegration_result_is_reported_as_a_research_gate() -> None:
     """The summary must label a failed prerequisite without hiding diagnostics."""
 
     dates = pd.bdate_range("2023-12-20", periods=20, name="date")
-    residual = np.array([0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 3, 2, 0, -2, 0, 2, 0, -2, 0, 0], dtype=float)
+    residual = np.array(
+        [0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 3, 2, 0, -2, 0, 2, 0, -2, 0, 0], dtype=float
+    )
     prices = pd.DataFrame({"PEP": 100.0, "KO": 60.0 + residual}, index=dates)
     failed_fit = CointegrationFit(10.0, 0.5, 0.9, -2.0, 0.20, -2.0, 0.20, 100)
     result = run_backtest(prices, failed_fit, make_config())

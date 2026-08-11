@@ -30,10 +30,12 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 from statarb_cointegration.config import load_config
-from statarb_cointegration.research import compute_causal_signal, fit_cointegration, run_backtest
-
+from statarb_cointegration.research import (
+    compute_causal_signal,
+    fit_cointegration,
+    run_backtest,
+)
 
 BLOG_ROOT = Path(__file__).resolve().parent
 DATA_PATH = BLOG_ROOT / "data" / "ko_pep_adjusted_close.parquet"
@@ -121,14 +123,40 @@ def plot_residual(prices: pd.DataFrame, training: pd.DataFrame) -> None:
 
     config = load_config()
     fit = fit_cointegration(training)
-    signal = compute_causal_signal(prices, fit, config.rolling_window).loc["2021-01-01" : config.backtest_end]
+    signal = compute_causal_signal(prices, fit, config.rolling_window).loc[
+        "2021-01-01" : config.backtest_end
+    ]
     upper = signal["rolling_mean_usd"] + config.entry_z * signal["rolling_std_usd"]
     lower = signal["rolling_mean_usd"] - config.entry_z * signal["rolling_std_usd"]
     fig, ax = plt.subplots(figsize=(13, 6.5), constrained_layout=True)
-    ax.plot(signal.index, signal["residual_usd"], color=COLORS["navy"], linewidth=1.5, label="Fixed residual")
-    ax.plot(signal.index, signal["rolling_mean_usd"], color=COLORS["green"], linewidth=1.4, label="Lagged 60-day mean")
-    ax.fill_between(signal.index, lower, upper, color=COLORS["gold"], alpha=0.25, label="Entry band (+/- 1.5 z)")
-    ax.axvline(pd.Timestamp(config.backtest_start), color=COLORS["red"], linestyle="--", label="Backtest starts")
+    ax.plot(
+        signal.index,
+        signal["residual_usd"],
+        color=COLORS["navy"],
+        linewidth=1.5,
+        label="Fixed residual",
+    )
+    ax.plot(
+        signal.index,
+        signal["rolling_mean_usd"],
+        color=COLORS["green"],
+        linewidth=1.4,
+        label="Lagged 60-day mean",
+    )
+    ax.fill_between(
+        signal.index,
+        lower,
+        upper,
+        color=COLORS["gold"],
+        alpha=0.25,
+        label="Entry band (+/- 1.5 z)",
+    )
+    ax.axvline(
+        pd.Timestamp(config.backtest_start),
+        color=COLORS["red"],
+        linestyle="--",
+        label="Backtest starts",
+    )
     ax.set_title("The fitted KO-PEP residual left its training regime")
     ax.set_xlabel("Date")
     ax.set_ylabel("Residual (USD per KO share)")
@@ -165,7 +193,13 @@ def plot_parameter_drift(estimates: list[PeriodEstimate]) -> None:
         ax.set_xticks(x, labels, rotation=18, ha="right")
         ax.grid(axis="y", alpha=0.2)
         for bar, value in zip(bars, values, strict=True):
-            ax.text(bar.get_x() + bar.get_width() / 2, value, f"{value:.3f}", ha="center", va="bottom" if value >= 0 else "top")
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                value,
+                f"{value:.3f}",
+                ha="center",
+                va="bottom" if value >= 0 else "top",
+            )
     fig.suptitle("The fitted price relation was not stable", fontsize=15)
     fig.savefig(IMAGES_DIR / "02_parameter_drift.png", dpi=FIGURE_DPI)
     plt.close(fig)
@@ -185,15 +219,36 @@ def plot_equity(daily: pd.DataFrame, initial_capital_usd: float) -> None:
     gross_equity = initial_capital_usd + daily["gross_pnl_usd"].cumsum()
     peak = daily["equity_usd"].cummax().clip(lower=initial_capital_usd)
     drawdown = daily["equity_usd"] / peak - 1.0
-    fig, axes = plt.subplots(2, 1, figsize=(13, 8), sharex=True, gridspec_kw={"height_ratios": [2.2, 1]}, constrained_layout=True)
-    axes[0].plot(daily.index, gross_equity, color=COLORS["gray"], linewidth=1.7, label="Before costs")
-    axes[0].plot(daily.index, daily["equity_usd"], color=COLORS["blue"], linewidth=2.1, label="After costs")
+    fig, axes = plt.subplots(
+        2,
+        1,
+        figsize=(13, 8),
+        sharex=True,
+        gridspec_kw={"height_ratios": [2.2, 1]},
+        constrained_layout=True,
+    )
+    axes[0].plot(
+        daily.index,
+        gross_equity,
+        color=COLORS["gray"],
+        linewidth=1.7,
+        label="Before costs",
+    )
+    axes[0].plot(
+        daily.index,
+        daily["equity_usd"],
+        color=COLORS["blue"],
+        linewidth=2.1,
+        label="After costs",
+    )
     axes[0].axhline(initial_capital_usd, color="#222222", linestyle="--", linewidth=1.0)
     axes[0].set_title("Daily mark-to-market exposes both losses and carrying costs")
     axes[0].set_ylabel("Account value (USD)")
     axes[0].legend(frameon=False)
     axes[0].grid(alpha=0.22)
-    axes[1].fill_between(drawdown.index, drawdown * 100.0, 0.0, color=COLORS["red"], alpha=0.55)
+    axes[1].fill_between(
+        drawdown.index, drawdown * 100.0, 0.0, color=COLORS["red"], alpha=0.55
+    )
     axes[1].set_xlabel("Date")
     axes[1].set_ylabel("Drawdown (%)")
     axes[1].grid(alpha=0.22)
@@ -207,13 +262,17 @@ def main() -> None:
     IMAGES_DIR.mkdir(parents=True, exist_ok=True)
     config = load_config()
     prices = load_frozen_prices()
-    training = prices.loc[prices.index < config.backtest_start].tail(config.training_observations)
+    training = prices.loc[prices.index < config.backtest_start].tail(
+        config.training_observations
+    )
     fit = fit_cointegration(training)
     result = run_backtest(prices, fit, config)
     estimates = [
         estimate_period("20-year training", training),
         estimate_period("Prior 2 years", prices.loc["2021-10-11":"2023-10-10"]),
-        estimate_period("Backtest", prices.loc[config.backtest_start : config.backtest_end]),
+        estimate_period(
+            "Backtest", prices.loc[config.backtest_start : config.backtest_end]
+        ),
     ]
     plot_residual(prices, training)
     plot_parameter_drift(estimates)

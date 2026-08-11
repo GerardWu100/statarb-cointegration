@@ -49,12 +49,8 @@ Le test ADF ordinaire donne une statistique de -2.630 et une p-valeur de 0.087. 
 Le code signale ce prérequis manquant au lieu de le masquer :
 
 ```python
-adf_statistic, adf_pvalue, *_ = adfuller(
-    residual, regression="c", autolag="AIC"
-)
-eg_statistic, eg_pvalue, _ = coint(
-    y, x, trend="c", autolag="aic"
-)
+adf_statistic, adf_pvalue, *_ = adfuller(residual, regression="c", autolag="AIC")
+eg_statistic, eg_pvalue, _ = coint(y, x, trend="c", autolag="aic")
 ```
 
 Le second appel fournit le test formel de cointégration fondé sur les résidus. Le premier reste utile, car il expose directement le test autorégressif sous-jacent.

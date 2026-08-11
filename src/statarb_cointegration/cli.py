@@ -11,7 +11,9 @@ from .pipeline import run_pipeline
 def main() -> None:
     """Run the configured study and print its scalar results."""
 
-    parser = argparse.ArgumentParser(description="Run the causal KO-PEP cointegration backtest.")
+    parser = argparse.ArgumentParser(
+        description="Run the causal KO-PEP cointegration backtest."
+    )
     parser.add_argument("--config", type=Path, help="Optional TOML configuration path.")
     arguments = parser.parse_args()
     result = run_pipeline(arguments.config)

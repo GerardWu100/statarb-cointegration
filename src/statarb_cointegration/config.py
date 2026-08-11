@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+
 import tomllib
 
 
@@ -61,13 +62,18 @@ class ResearchConfig:
         if not 0.0 <= self.exit_z < self.entry_z < self.stop_z:
             raise ValueError("Thresholds must satisfy 0 <= exit_z < entry_z < stop_z.")
         if self.rolling_window < 2 or self.training_observations <= self.rolling_window:
-            raise ValueError("Training history must exceed a rolling window of at least two observations.")
+            raise ValueError(
+                "Training history must exceed a rolling window of at least two observations."
+            )
         if self.initial_capital_usd <= 0.0 or self.gross_exposure_multiple <= 0.0:
             raise ValueError("Capital and gross exposure must be positive.")
         object.__setattr__(
             self,
             "prices_path",
-            self.project_root / "data" / "processed" / "ko_pep_combined_adj_close_price.parquet",
+            self.project_root
+            / "data"
+            / "processed"
+            / "ko_pep_combined_adj_close_price.parquet",
         )
         object.__setattr__(self, "outputs_dir", self.project_root / "outputs")
 

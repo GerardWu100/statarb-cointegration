@@ -49,12 +49,8 @@ The ordinary ADF test gives a statistic of -2.630 and a p-value of 0.087. Becaus
 The research code reports this failed prerequisite rather than hiding it:
 
 ```python
-adf_statistic, adf_pvalue, *_ = adfuller(
-    residual, regression="c", autolag="AIC"
-)
-eg_statistic, eg_pvalue, _ = coint(
-    y, x, trend="c", autolag="aic"
-)
+adf_statistic, adf_pvalue, *_ = adfuller(residual, regression="c", autolag="AIC")
+eg_statistic, eg_pvalue, _ = coint(y, x, trend="c", autolag="aic")
 ```
 
 The second call is the formal residual-based cointegration test. The first remains useful because it exposes the underlying autoregressive test directly.

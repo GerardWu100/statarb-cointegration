@@ -76,9 +76,18 @@ def load_prices(config: ResearchConfig) -> pd.DataFrame:
         Daily US-dollar adjusted closes indexed by unique timestamps.
     """
 
-    prices = pd.read_parquet(config.prices_path).loc[:, ["KO", "PEP"]].astype(float).sort_index()
+    prices = (
+        pd.read_parquet(config.prices_path)
+        .loc[:, ["KO", "PEP"]]
+        .astype(float)
+        .sort_index()
+    )
     prices.index = pd.DatetimeIndex(pd.to_datetime(prices.index), name="date")
-    if prices.index.has_duplicates or prices.isna().any().any() or (prices <= 0.0).any().any():
+    if (
+        prices.index.has_duplicates
+        or prices.isna().any().any()
+        or (prices <= 0.0).any().any()
+    ):
         raise ValueError("Prices must be positive, complete, and uniquely indexed.")
     return prices
 
@@ -248,9 +257,10 @@ def run_backtest(
         borrow_cost = 0.0
         financing_cost = 0.0
         if previous_prices is not None:
-            gross_pnl = (
-                ko_shares * (float(current_prices["KO"]) - float(previous_prices["KO"]))
-                + pep_shares * (float(current_prices["PEP"]) - float(previous_prices["PEP"]))
+            gross_pnl = ko_shares * (
+                float(current_prices["KO"]) - float(previous_prices["KO"])
+            ) + pep_shares * (
+                float(current_prices["PEP"]) - float(previous_prices["PEP"])
             )
             short_value = max(-ko_shares * float(previous_prices["KO"]), 0.0) + max(
                 -pep_shares * float(previous_prices["PEP"]), 0.0
@@ -265,7 +275,11 @@ def run_backtest(
         old_ko, old_pep = ko_shares, pep_shares
         exit_reason = ""
         is_last_date = row_number == len(sample) - 1
-        if side != 0 and (abs(z_score) <= config.exit_z or abs(z_score) >= config.stop_z or is_last_date):
+        if side != 0 and (
+            abs(z_score) <= config.exit_z
+            or abs(z_score) >= config.stop_z
+            or is_last_date
+        ):
             exit_reason = (
                 "end of sample"
                 if is_last_date
@@ -275,10 +289,18 @@ def run_backtest(
             )
             ko_shares = 0.0
             pep_shares = 0.0
-        elif side == 0 and config.entry_z <= abs(z_score) < config.stop_z and not is_last_date:
+        elif (
+            side == 0
+            and config.entry_z <= abs(z_score) < config.stop_z
+            and not is_last_date
+        ):
             side = -1 if z_score > 0.0 else 1
             ko_shares, pep_shares = _target_holdings(
-                float(current_prices["KO"]), float(current_prices["PEP"]), fit.beta, side, config
+                float(current_prices["KO"]),
+                float(current_prices["PEP"]),
+                fit.beta,
+                side,
+                config,
             )
             entry_date = date
 
@@ -332,11 +354,17 @@ def run_backtest(
 
     daily = pd.DataFrame(rows).set_index("date")
     trade_frame = pd.DataFrame(trades)
-    returns = daily["net_pnl_usd"] / daily["equity_usd"].shift(1).fillna(config.initial_capital_usd)
+    returns = daily["net_pnl_usd"] / daily["equity_usd"].shift(1).fillna(
+        config.initial_capital_usd
+    )
     running_peak = daily["equity_usd"].cummax().clip(lower=config.initial_capital_usd)
     drawdown = daily["equity_usd"] / running_peak - 1.0
     return_std = float(returns.std(ddof=1))
-    sharpe = float(returns.mean() / return_std * np.sqrt(config.trading_days_per_year)) if return_std else np.nan
+    sharpe = (
+        float(returns.mean() / return_std * np.sqrt(config.trading_days_per_year))
+        if return_std
+        else np.nan
+    )
     metrics = {
         "alpha_usd": fit.alpha_usd,
         "beta": fit.beta,
@@ -356,7 +384,9 @@ def run_backtest(
         else np.nan,
         "gross_pnl_usd": float(daily["gross_pnl_usd"].sum()),
         "total_cost_usd": float(
-            daily[["transaction_cost_usd", "borrow_cost_usd", "financing_cost_usd"]].sum().sum()
+            daily[["transaction_cost_usd", "borrow_cost_usd", "financing_cost_usd"]]
+            .sum()
+            .sum()
         ),
         "net_pnl_usd": float(daily["net_pnl_usd"].sum()),
         "total_return": float(equity / config.initial_capital_usd - 1.0),
