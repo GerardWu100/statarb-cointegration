@@ -7,7 +7,8 @@ name = "statarb-cointegration"
 version = "0.1.0"
 description = "Tests and backtests a fixed KO-PEP cointegration relation with causal signals, matched holdings, explicit costs, and daily marking."
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+license = { file = "LICENSE" }
+requires-python = ">=3.13"
 dependencies = [
     "numpy>=2.2",
     "pandas>=2.2",
