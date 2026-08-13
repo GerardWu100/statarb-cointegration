@@ -168,27 +168,25 @@
 
 <p class="eyebrow"><span class="dot"></span>statarb-cointegration &middot; KO vs PEP &middot; code explained</p>
 <h1>Reading the cointegration study</h1>
-<p class="lede">What the code does, how the four modules fit together, where every number
-comes from, and the biases the design cannot remove.</p>
+<p class="lede">What the code does, how its four modules connect, where its numbers come
+from, and which biases remain.</p>
 
 <div class="box def">
   <span class="k">How to use this</span>
-  <p>Sections follow execution order, from configuration to printed metrics. Every code
-  snippet is copied from the files under <code>src/statarb_cointegration/</code>. Every number in a
-  sample box was produced by running <code>uv run statarb-pipeline</code> on the frozen parquet
-  file in this repository on 10 August 2026, not estimated. Coloured boxes carry the design
-  choices, the traps, and the honest limits.</p>
+  <p>Sections follow execution order, from settings to printed metrics. Each code snippet is
+  copied from <code>src/statarb_cointegration/</code>. Each number in a sample box comes from
+  running <code>uv run statarb-pipeline</code> on this repository's frozen Parquet file on 10
+  August 2026; none was estimated. Coloured boxes mark design choices, traps, and limits.</p>
 </div>
 
 <div class="box why">
   <span class="k">The process in plain English</span>
-  <p>The code asks one question: do Coca-Cola (KO) and Pepsi (PEP) share prices drift apart
-  and then come back together reliably enough to trade? It fits a straight line of KO price
-  against PEP price on twenty years of history, takes the gap between the real KO price and
-  the line, and tests whether that gap is the kind of series that returns to its own average.
-  The test says no, with a p-value of 0.2255 against a 0.05 threshold. The code then runs the
-  trade anyway, with costs and daily accounting, to measure what ignoring that answer would
-  have cost: a 46.2 percent loss over two years.</p>
+  <p>The code asks whether Coca-Cola (KO) and Pepsi (PEP) prices move apart and then return
+  together reliably enough to trade. It fits a straight line from PEP price to KO price over
+  twenty years, measures the gap between the actual KO price and that line, and tests whether
+  the gap returns to its average. The test fails: its p-value is 0.2255 against a 0.05
+  threshold. The code still runs the trade, including costs and daily accounting, to measure
+  the result of ignoring that failure: a 46.2 percent loss over two years.</p>
 </div>
 
 <h2 id="map"><span class="sec-no">00</span>Map</h2>
@@ -207,9 +205,9 @@ flowchart LR
   bt --> tables[("outputs/tables")]
   bt --> cli["cli.main()"]
 </div>
-<p class="fnote">Boxes are functions as they are named in the code; cylinders are files on
-disk. Arrows are the direction data moves. <code>run_pipeline()</code> is the only thing that
-touches the disk on the way out.</p>
+<p class="fnote">Boxes are functions named in the code; cylinders are files on disk. Arrows
+show the direction of data flow. <code>run_pipeline()</code> is the only function that writes
+the outputs.</p>
 
 <div class="toc">
   <div class="rk">Contents</div>
@@ -234,48 +232,46 @@ touches the disk on the way out.</p>
   </ol>
 </div>
 
-<h2 id="s01"><span class="sec-no">01</span>What the project is and where the files live</h2>
+<h2 id="s01"><span class="sec-no">01</span>Project scope and file layout</h2>
 
-<p>Two terms first, because everything below rests on them.</p>
+<p>Two terms explain the rest of the page.</p>
 
-<p><b>Cointegration</b> means two price series each wander without settling anywhere, but some
-fixed combination of them does settle around a constant level. If KO and PEP were
-cointegrated, the gap between the KO price and a fixed multiple of the PEP price would keep
-returning to its average, and you could trade that return.</p>
+<p><b>Cointegration</b> means two price series can wander, while a fixed combination of them
+returns to a stable level. If KO and PEP were cointegrated, the gap between KO and a fixed
+multiple of PEP would keep returning to its average. That is the behaviour this strategy tries
+to trade.</p>
 
-<p><b>Stationary</b> means a series has a stable average and a stable spread, so that being far
-from the average today tells you something about tomorrow. A series with a <b>unit root</b> is
-the opposite: it wanders with no anchor, so being far from yesterday's average tells you
-nothing.</p>
+<p><b>Stationary</b> means a series has a stable average and spread, so a large distance from
+the average today contains information about tomorrow. A series with a <b>unit root</b> has no
+such anchor and can keep wandering.</p>
 
-<p>The project fits the combination, tests the gap for stationarity, and then runs the trade
-as a controlled failure so the cost of ignoring a failed test is measurable rather than
-hypothetical.</p>
+<p>The project fits the combination, tests the gap for stationarity, then runs the trade as a
+historical simulation. This measures the cost of ignoring a failed test.</p>
 
 <div class="scroll">
 <table>
-<thead><tr><th>Path</th><th>What it holds</th><th>Lines of Python</th></tr></thead>
+<thead><tr><th>Path</th><th>Contents</th><th>Lines of Python</th></tr></thead>
 <tbody>
-<tr><td><code>config.toml</code></td><td>Every research setting, one per line, each commented</td><td class="n">&mdash;</td></tr>
-<tr><td><code>src/statarb_cointegration/config.py</code></td><td><code>ResearchConfig</code> dataclass, validation, path resolution, <code>load_config</code></td><td class="n">99</td></tr>
-<tr><td><code>src/statarb_cointegration/research.py</code></td><td>All financial logic: fit, test, signal, sizing, backtest, metrics</td><td class="n">396</td></tr>
-<tr><td><code>src/statarb_cointegration/pipeline.py</code></td><td><code>run_pipeline</code>: pick the training slice, call research, write three CSV files</td><td class="n">47</td></tr>
-<tr><td><code>src/statarb_cointegration/cli.py</code></td><td><code>main</code>: parse one optional argument, print the metrics</td><td class="n">25</td></tr>
+<tr><td><code>config.toml</code></td><td>Every research setting, with a comment</td><td class="n">&mdash;</td></tr>
+<tr><td><code>src/statarb_cointegration/config.py</code></td><td><code>ResearchConfig</code> data class, validation, path resolution, and <code>load_config</code></td><td class="n">99</td></tr>
+<tr><td><code>src/statarb_cointegration/research.py</code></td><td>All financial logic: fitting, testing, signals, sizing, backtesting, and metrics</td><td class="n">396</td></tr>
+<tr><td><code>src/statarb_cointegration/pipeline.py</code></td><td><code>run_pipeline</code>: select training data, call the research code, and write three comma-separated values (CSV) files</td><td class="n">47</td></tr>
+<tr><td><code>src/statarb_cointegration/cli.py</code></td><td><code>main</code>: parse one optional argument and print the metrics</td><td class="n">25</td></tr>
 <tr><td><code>scripts/run_pipeline.py</code></td><td>Six-line wrapper that imports and calls <code>cli.main</code></td><td class="n">6</td></tr>
-<tr><td><code>tests/unit/test_research.py</code></td><td>Four tests: causal timing, hedge sign, costs, failed-gate reporting</td><td class="n">139</td></tr>
+<tr><td><code>tests/unit/test_research.py</code></td><td>Four tests: timing, hedge sign, costs, and failed-gate reporting</td><td class="n">139</td></tr>
 <tr><td><code>data/processed/*.parquet</code></td><td>Frozen KO and PEP adjusted closes, 11,531 rows, 1980-01-02 to 2025-09-30</td><td class="n">&mdash;</td></tr>
-<tr><td><code>outputs/tables/</code></td><td>Generated. Ignored by git. Three CSV files rewritten on every run</td><td class="n">&mdash;</td></tr>
-<tr><td><code>blog/generate_charts.py</code></td><td>Rebuilds the three post figures and two frozen CSV files</td><td class="n">286</td></tr>
-<tr><td><code>docs/reference/*.ipynb</code></td><td>The original notebook, kept unchanged as history. Not executed by anything</td><td class="n">&mdash;</td></tr>
+<tr><td><code>outputs/tables/</code></td><td>Generated, ignored by git, and rewritten on every run</td><td class="n">&mdash;</td></tr>
+<tr><td><code>blog/generate_charts.py</code></td><td>Rebuilds three post figures and two frozen CSV files</td><td class="n">286</td></tr>
+<tr><td><code>docs/reference/*.ipynb</code></td><td>The original notebook, kept unchanged as history and not executed</td><td class="n">&mdash;</td></tr>
 </tbody>
 </table>
 </div>
 
 <div class="box why"><span class="k">Why the logic lives in one module</span>
-<p>All the finance is in <code>research.py</code>. <code>pipeline.py</code> only chooses the training
-slice and writes files; <code>cli.py</code> only prints. That split is what makes the four unit
-tests possible: they import <code>run_backtest</code> directly and hand it a twenty-row
-hand-built price frame, with no configuration file, no parquet, and no disk writes.</p></div>
+<p>All financial logic is in <code>research.py</code>. <code>pipeline.py</code> selects the training
+slice and writes files; <code>cli.py</code> prints. This separation lets the four unit tests
+import <code>run_backtest</code> directly and pass it a hand-built, twenty-row price frame
+without a configuration file, Parquet data, or disk writes.</p></div>
 
 <h2 id="s02"><span class="sec-no">02</span>Configuration &mdash; <code>config.toml</code>, <code>ResearchConfig</code>, <code>load_config</code></h2>
 
@@ -289,59 +285,56 @@ hand-built price frame, with no configuration file, no parquet, and no disk writ
     return ResearchConfig(project_root=project_root, **values)</pre>
 
 <div class="box gist"><span class="k">In plain words</span>
-<p>Read the settings file, check the settings make sense together, and work out where the
-data and output folders are relative to the code rather than relative to wherever you
-happen to be standing in the terminal.</p></div>
+<p>Read the settings, check that they work together, and locate the data and output folders
+from the code's location rather than from the terminal's current folder.</p></div>
 
 <div class="box def"><span class="k">What it does</span>
-<p><b>Input:</b> an optional path to a TOML file; nothing means the repository's own
-<code>config.toml</code>. <b>Output:</b> a frozen <code>ResearchConfig</code> with fifteen settings
-plus two derived paths. <b>Role:</b> every other function takes this object rather than
-reading files or constants of its own.</p></div>
+<p><b>Input:</b> an optional path to a TOML (Tom's Obvious, Minimal Language) file; no path
+means the repository's <code>config.toml</code>. <b>Output:</b> a <code>ResearchConfig</code> with
+fifteen settings and two derived paths. <b>Role:</b> every other function receives this
+object instead of reading its own files or constants.</p></div>
 
-<p>The whole settings surface, and what moving each one actually changes:</p>
+<p>Each setting and the change it controls:</p>
 
 <div class="scroll">
 <table>
 <thead><tr><th>Setting</th><th class="n">Value</th><th>What changes if you move it</th></tr></thead>
 <tbody>
-<tr><td><code>training_observations</code></td><td class="n">5000</td><td>How many trading days before the split are used to fit the line. 5,000 days reaches back to 2003-11-28. Shorter means a fresher slope but a noisier one.</td></tr>
-<tr><td><code>backtest_start</code></td><td class="n">2023-10-11</td><td>The first day the strategy may trade, and the boundary the fit is not allowed to cross. Moving it moves both the training window and the test window.</td></tr>
-<tr><td><code>backtest_end</code></td><td class="n">2025-09-30</td><td>Last trading day. Any open position is forced shut on this date.</td></tr>
-<tr><td><code>rolling_window</code></td><td class="n">60</td><td>How many earlier gaps set the average and spread used to score today. Smaller reacts faster and trades more; larger is steadier and slower.</td></tr>
-<tr><td><code>entry_z</code></td><td class="n">1.5</td><td>How far from the recent average the gap must be before a position opens. Raising it means fewer, more extreme trades.</td></tr>
-<tr><td><code>exit_z</code></td><td class="n">0.2</td><td>How close to the average the gap must come before the winning exit fires.</td></tr>
-<tr><td><code>stop_z</code></td><td class="n">2.5</td><td>Doubles as the stop loss and as the upper edge of the entry band. A signal past this level both closes an open trade and blocks a new one.</td></tr>
-<tr><td><code>initial_capital_usd</code></td><td class="n">100000.0</td><td>Starting account value, and the denominator of every return figure.</td></tr>
-<tr><td><code>gross_exposure_multiple</code></td><td class="n">2.0</td><td>Total position size at entry as a multiple of starting capital. 2.0 means 200,000 USD of stock across the two legs. Scales profit, loss, and costs together.</td></tr>
-<tr><td><code>transaction_cost_bps</code></td><td class="n">5.0</td><td>One-way trading cost per dollar traded, in basis points. One basis point is 0.01 percent. Charged on entry and again on exit.</td></tr>
-<tr><td><code>short_borrow_rate_annual</code></td><td class="n">0.01</td><td>Yearly fee on the value of the shorted leg.</td></tr>
-<tr><td><code>financing_rate_annual</code></td><td class="n">0.05</td><td>Yearly funding charge on the value of the owned leg. Five times the borrow rate, so it dominates the carrying cost.</td></tr>
-<tr><td><code>trading_days_per_year</code></td><td class="n">252</td><td>Used twice: to turn the two annual rates into daily accruals, and to scale the Sharpe ratio.</td></tr>
-<tr><td><code>cointegration_significance</code></td><td class="n">0.05</td><td>The p-value the Engle-Granger test must beat. Reported as a pass or fail flag; it does not stop the backtest from running.</td></tr>
+<tr><td><code>training_observations</code></td><td class="n">5000</td><td>Trading days before the split used to fit the line. 5,000 days reaches back to 2003-11-28. Fewer days give a newer but noisier slope.</td></tr>
+<tr><td><code>backtest_start</code></td><td class="n">2023-10-11</td><td>First day the strategy may trade and the boundary the fit cannot cross. Moving it changes both training and test data.</td></tr>
+<tr><td><code>backtest_end</code></td><td class="n">2025-09-30</td><td>Last trading day. Any open position is closed on this date.</td></tr>
+<tr><td><code>rolling_window</code></td><td class="n">60</td><td>Earlier gaps used to set today's average and spread. Fewer days react faster and trade more; more days are steadier and slower.</td></tr>
+<tr><td><code>entry_z</code></td><td class="n">1.5</td><td>Distance from the recent average required to open a position. Raising it gives fewer, more extreme trades.</td></tr>
+<tr><td><code>exit_z</code></td><td class="n">0.2</td><td>Distance from the average at which the winning exit fires.</td></tr>
+<tr><td><code>stop_z</code></td><td class="n">2.5</td><td>Both the stop loss and the top of the entry band. A signal beyond it closes an open trade and blocks a new one.</td></tr>
+<tr><td><code>initial_capital_usd</code></td><td class="n">100000.0</td><td>Starting account value and denominator for every return.</td></tr>
+<tr><td><code>gross_exposure_multiple</code></td><td class="n">2.0</td><td>Total position size at entry as a multiple of starting capital. 2.0 means 200,000 US dollars of stock across both legs. Profit, loss, and costs all scale with it.</td></tr>
+<tr><td><code>transaction_cost_bps</code></td><td class="n">5.0</td><td>One-way trading cost per dollar traded, in basis points. One basis point is 0.01 percent. Charged on entry and exit.</td></tr>
+<tr><td><code>short_borrow_rate_annual</code></td><td class="n">0.01</td><td>Yearly fee on the short leg's value.</td></tr>
+<tr><td><code>financing_rate_annual</code></td><td class="n">0.05</td><td>Yearly funding charge on the owned leg's value. It is five times the borrow rate, so it drives most carrying cost.</td></tr>
+<tr><td><code>trading_days_per_year</code></td><td class="n">252</td><td>Converts the two annual rates to daily charges and scales the Sharpe ratio.</td></tr>
+<tr><td><code>cointegration_significance</code></td><td class="n">0.05</td><td>P-value threshold for the Engle-Granger test. It is reported as pass or fail; it does not stop the backtest.</td></tr>
 </tbody>
 </table>
 </div>
 
 <div class="box warn"><span class="k">Trap: the settings are checked against each other, not just individually</span>
-<p><code>__post_init__</code> rejects a configuration where
-<code>0 &lt;= exit_z &lt; entry_z &lt; stop_z</code> fails, and one where the training window is
-not longer than the rolling window. Without the first check you could set an exit threshold
-above the entry threshold, and every position would close on the same day it opened while
-still paying two lots of trading cost. The error arrives at load time instead of as a
-strange result three hundred lines later.</p></div>
+<p><code>__post_init__</code> rejects configurations that fail
+<code>0 &lt;= exit_z &lt; entry_z &lt; stop_z</code> or have a training window no longer than the
+rolling window. Without the first check, a position could open and close on the same day,
+paying two trading costs. The error appears when settings load, not hundreds of lines later.</p></div>
 
 <div class="box why"><span class="k">Why paths are derived from the file, not the terminal</span>
-<p><code>Path(__file__).resolve().parents[2]</code> walks up from
-<code>src/statarb_cointegration/config.py</code> to the repository root. The parquet path and
-the outputs folder hang off that. The pipeline therefore produces the same result whether
-you run it from the project root, from your home directory, or from a scheduler.</p></div>
+<p><code>Path(__file__).resolve().parents[2]</code> walks from
+<code>src/statarb_cointegration/config.py</code> to the repository root. The Parquet path and
+output folder are built from that root. The pipeline therefore behaves the same from the
+project root, another directory, or a scheduler.</p></div>
 
 <div class="box flag"><span class="k">One setting that is not in the settings file</span>
-<p>The parquet filename <code>ko_pep_combined_adj_close_price.parquet</code> is written into
-<code>config.py</code>, not into <code>config.toml</code>. Pointing the study at a different pair
-means editing Python. It is a deliberate simplification for a two-ticker study, but it is
-the one tunable value that escaped the configuration file.</p></div>
+<p>The Parquet filename <code>ko_pep_combined_adj_close_price.parquet</code> is written in
+<code>config.py</code>, not <code>config.toml</code>. Using another pair requires a Python edit.
+That is a deliberate simplification for this two-ticker study, but it is the one tunable value
+outside the settings file.</p></div>
 
 <h2 id="s03"><span class="sec-no">03</span>Loading prices &mdash; <code>load_prices</code></h2>
 
@@ -361,14 +354,14 @@ if (
 return prices</pre>
 
 <div class="box gist"><span class="k">In plain words</span>
-<p>Read two columns of daily prices, sort them by date, and refuse to continue if any date
-appears twice, any price is missing, or any price is zero or negative.</p></div>
+<p>Read two daily price columns, sort them by date, and stop if a date repeats, a price is
+missing, or a price is zero or negative.</p></div>
 
 <div class="box def"><span class="k">What it does</span>
-<p><b>Input:</b> the config, for the parquet path. <b>Output:</b> a frame with a
+<p><b>Input:</b> the config, which supplies the Parquet path. <b>Output:</b> a frame with a
 <code>DatetimeIndex</code> named <code>date</code> and two float columns, <code>KO</code> and
-<code>PEP</code>. <b>Role:</b> the single source of prices for the fit, the signal, and the
-backtest, so all three see identical numbers.</p></div>
+<code>PEP</code>. <b>Role:</b> the one price source for the fit, signal, and backtest, so all
+three use the same numbers.</p></div>
 
 <div class="box data"><span class="k">Sample data</span>
 <div class="io">
@@ -386,18 +379,17 @@ dtypes       float64, float64
 duplicates   none
 missing      none
 non-positive none</pre>
-<p class="fnote">The 1980 prices are small because these are split-adjusted and
-dividend-adjusted closes, not the prices quoted at the time.</p></div>
+<p class="fnote">The 1980 prices are small because the closes are adjusted for splits and
+dividends, not the prices quoted at the time.</p></div>
 </div>
-<p>11,531 daily rows span 45 years. The backtest uses only the last 494 of them; the other
-11,037 exist to give the fit and the rolling window enough history.</p></div>
+<p>There are 11,531 daily rows across 45 years. The backtest uses the last 494; the other
+11,037 provide history for the fit and rolling window.</p></div>
 
 <div class="box warn"><span class="k">Trap: a duplicate date would silently corrupt the backtest</span>
-<p>Later the loop reads one z-score with <code>signal.at[date, "z_score"]</code>. With a
-duplicated date that lookup returns an array instead of a number, and
-<code>float(...)</code> would raise something confusing far from the cause. The check here
-turns that into a clear message at load time. The same is true of a non-positive price,
-which would flip the sign of a market value in the cost calculation.</p></div>
+<p>Later, the loop reads one z-score with <code>signal.at[date, "z_score"]</code>. A duplicate
+date would return an array instead of a number, so <code>float(...)</code> would fail far from
+the cause. This check gives a clear load-time error. A non-positive price would also reverse
+the sign of a market value in the cost calculation.</p></div>
 
 <h2 id="s04"><span class="sec-no">04</span>The relation and the test &mdash; <code>fit_cointegration</code></h2>
 
@@ -412,53 +404,50 @@ adf_statistic, adf_pvalue, *_ = adfuller(residual, regression="c", autolag="AIC"
 eg_statistic, eg_pvalue, _ = coint(y, x, trend="c", autolag="aic")</pre>
 
 <div class="box gist"><span class="k">In plain words</span>
-<p>Draw the best straight line through KO price plotted against PEP price, measure how far
-each day sits from that line, and run two statistical tests asking whether those distances
-return to zero or just wander.</p></div>
+<p>Fit the best straight line from PEP price to KO price, measure each day's distance from the
+line, and run two tests to see whether those distances return to zero or keep wandering.</p></div>
 
 <div class="box def"><span class="k">What it does</span>
-<p><b>Input:</b> a price frame covering only the training window. <b>Output:</b> a frozen
+<p><b>Input:</b> a price frame covering only the training window. <b>Output:</b> a
 <code>CointegrationFit</code> holding eight numbers: intercept, slope, fit quality, and two
-test statistics with their p-values. <b>Role:</b> the slope becomes the hedge ratio, the
-intercept and slope define the gap that is traded, and the Engle-Granger p-value is the
-research gate.</p></div>
+test statistics with their p-values. <b>Role:</b> the slope becomes the hedge ratio—the
+number of PEP shares used per KO share. The intercept and slope define the traded gap, and
+the Engle-Granger p-value is the research gate.</p></div>
 
 <div class="box def"><span class="k">The formula &mdash; the line and the hedge ratio</span>
 <p>$$\hat\beta=\frac{\sum_{t=1}^{T}(x_t-\bar x)(y_t-\bar y)}{\sum_{t=1}^{T}(x_t-\bar x)^2},
 \qquad \hat\alpha=\bar y-\hat\beta\,\bar x,
 \qquad e_t=y_t-\hat\alpha-\hat\beta x_t$$</p>
-<p class="fnote">$y_t$ is the KO adjusted close on day $t$ in US dollars, $x_t$ the PEP
+<p class="fnote">$y_t$ is the KO adjusted close on day $t$ in US dollars; $x_t$ is the PEP
 adjusted close. $T=5000$ is the number of training days. $\bar y$ and $\bar x$ are their
-averages over those days. $\hat\beta$ is the slope, which doubles as the hedge ratio: the
-number of PEP shares to sell per KO share owned. $\hat\alpha$ is the intercept in US
-dollars. $e_t$ is the residual, the gap in US dollars between the actual KO price and the
-price the line predicts. This is exactly what <code>np.polyfit(x, y, 1)</code> computes; note
-it returns the slope first and the intercept second, which is why the code unpacks it as
+averages. $\hat\beta$ is the slope and hedge ratio: the number of PEP shares to sell per KO
+share owned. $\hat\alpha$ is the intercept in US dollars. $e_t$ is the residual, the gap
+between the actual KO price and the line's prediction. <code>np.polyfit(x, y, 1)</code>
+computes these values and returns the slope before the intercept, so the code unpacks them as
 <code>beta, alpha</code>.</p></div>
 
 <div class="box def"><span class="k">The formula &mdash; how well the line fits</span>
 <p>$$R^2=1-\frac{\sum_{t=1}^{T}e_t^2}{\sum_{t=1}^{T}(y_t-\bar y)^2}$$</p>
-<p class="fnote">The fraction of the up-and-down movement in the KO price that the PEP price
-explains. One means the line passes through every point; zero means the line is no better
-than the flat average. The code writes this literally as
-<code>1.0 - residual_ss / total_ss</code>.</p></div>
+<p class="fnote">The share of KO price movement explained by PEP price. One means the line
+passes through every point; zero means it is no better than the flat average. The code writes
+this as <code>1.0 - residual_ss / total_ss</code>.</p></div>
 
 <div class="box def"><span class="k">The formula &mdash; the two stationarity tests</span>
-<p>The Augmented Dickey-Fuller regression, which <code>adfuller(residual, regression="c",
+<p>The Augmented Dickey-Fuller (ADF) regression, which
+<code>adfuller(residual, regression="c",
 autolag="AIC")</code> runs on the residual series:</p>
 <p>$$\Delta e_t=c+\gamma\,e_{t-1}+\sum_{i=1}^{k}\phi_i\,\Delta e_{t-i}+u_t,
 \qquad H_0:\gamma=0$$</p>
 <p class="fnote">$\Delta e_t=e_t-e_{t-1}$ is the one-day change in the gap. $c$ is a
-constant. $\gamma$ is the pull-back coefficient: if $\gamma$ is reliably below zero, a large
-gap tends to shrink, which is what stationary means here. The $\phi_i$ terms mop up
-short-run momentum in the changes, and $k$ is chosen automatically by the Akaike Information
-Criterion, a rule that trades extra terms against better fit. $u_t$ is the leftover noise.
-The null hypothesis $H_0$ is $\gamma=0$, meaning no pull-back at all. A small p-value
-rejects it.</p>
+constant. $\gamma$ measures the pull back: if $\gamma$ is reliably below zero, a large gap tends
+to shrink, which is what stationary means here. The $\phi_i$ terms capture short-term
+movement in the changes. $k$ is chosen by the Akaike Information Criterion, a rule that
+balances extra terms against fit. $u_t$ is leftover noise. The null hypothesis $H_0$ is
+$\gamma=0$, meaning there is no pull back. A small p-value rejects it.</p>
 <p>The Engle-Granger test, <code>coint(y, x, trend="c", autolag="aic")</code>, runs the same
-regression but scores it against critical values that already allow for $\hat\alpha$ and
-$\hat\beta$ having been estimated from the same data. That correction is why its p-value is
-much larger than the plain Dickey-Frank result on identical numbers.</p></div>
+regression but uses critical values that account for estimating $\hat\alpha$ and
+$\hat\beta$ from the same data. That is why its p-value is much larger than the plain ADF
+result on the same numbers.</p></div>
 
 <div class="box data"><span class="k">Sample data</span>
 <div class="io">
@@ -478,33 +467,30 @@ engle_granger_statistic   -2.630745
 engle_granger_pvalue       0.225469   &lt;- the gate
 observations                   5000</pre></div>
 </div>
-<p>The two test statistics are almost the same number, <span class="pill">-2.6295</span>
-against <span class="pill">-2.6307</span>, but their p-values are
-<span class="pill">0.087</span> and <span class="pill">0.225</span>. Nothing about the data
-changed; only the table of critical values did. The Engle-Granger p-value of 0.2255 is far
-above the 0.05 threshold, so <code>cointegration_passed</code> is
-<span class="failw">0</span>.</p></div>
+<p>The test statistics are nearly equal, <span class="pill">-2.6295</span> and
+<span class="pill">-2.6307</span>, but the p-values are
+<span class="pill">0.087</span> and <span class="pill">0.225</span>. The data did not change;
+the critical-value table did. The Engle-Granger p-value, 0.2255, is above 0.05, so
+<code>cointegration_passed</code> is <span class="failw">0</span>.</p></div>
 
 <div class="box warn"><span class="k">Trap: a high R-squared is not evidence of cointegration</span>
-<p>This is the single most important idea in the project. The line explains 96.0 percent of
-the KO price variation, which looks conclusive and is worthless on its own. Two series that
-both drift upwards over twenty years will fit each other well by construction, a pattern
-known as a spurious regression. The only thing that matters is whether the leftover gap
-comes back, and the correct test says it does not.</p></div>
+<p>A high R-squared does not prove cointegration. The line explains 96.0 percent of KO price
+variation, but that result means little on its own. Two series that both rise over twenty
+years can fit each other well by construction; this is called a spurious regression. The key
+question is whether the leftover gap returns, and the correct test says it does not.</p></div>
 
 <div class="box why"><span class="k">Why both tests are reported when only one counts</span>
-<p>The plain Dickey-Fuller p-value of 0.087 is the number a careless version of this study
-would quote, and at a 10 percent threshold it would look almost passable. Keeping it beside
-the correct 0.225 makes the size of the correction visible. The docstring is explicit that
-the Engle-Granger value is the gate and the other is a diagnostic.</p></div>
+<p>A less careful version might quote the plain ADF p-value of 0.087; at a 10 percent
+threshold it would nearly pass. Showing it beside the correct value, 0.225, makes the
+correction visible. The docstring identifies the Engle-Granger value as the gate and the ADF
+value as a diagnostic.</p></div>
 
 <div class="box flag"><span class="k">The fit is a single fixed line, and it is never refreshed</span>
-<p><code>fit_cointegration</code> is called once, on data ending 2023-10-10, and the resulting
-$\hat\alpha$ and $\hat\beta$ are used unchanged for all 494 backtest days. That is the honest
-choice, because refitting inside the test window would leak information. But it also means
-that if the true relationship drifted during 2024, the strategy would keep trading a gap
-defined by a relationship that no longer exists. The <code>blog/generate_charts.py</code>
-diagnostic shows exactly that drift.</p></div>
+<p><code>fit_cointegration</code> runs once on data ending 2023-10-10. The resulting
+$\hat\alpha$ and $\hat\beta$ stay fixed for all 494 backtest days. Refitting inside the test
+window would leak information, but a relationship that changed during 2024 would leave the
+strategy trading an outdated gap. The <code>blog/generate_charts.py</code> diagnostic shows
+that drift.</p></div>
 
 <h2 id="s05"><span class="sec-no">05</span>The signal &mdash; <code>compute_causal_signal</code></h2>
 
@@ -523,15 +509,14 @@ return pd.DataFrame(
 )</pre>
 
 <div class="box gist"><span class="k">In plain words</span>
-<p>Work out today's gap between the KO price and the line, then ask how unusual that gap is
-compared with the last sixty days of gaps &mdash; sixty days that stop yesterday, so today's
-gap is never allowed to help judge itself.</p></div>
+<p>Measure today's gap from the line, then compare it with the previous sixty gaps. The
+previous window ends yesterday, so today's gap never helps judge itself.</p></div>
 
 <div class="box def"><span class="k">What it does</span>
-<p><b>Input:</b> the full price history, the frozen fit, and the window length.
-<b>Output:</b> a four-column frame on the same index as the prices: the gap, its trailing
-average, its trailing spread, and the score. <b>Role:</b> the <code>z_score</code> column is
-the only thing the trading rule looks at.</p></div>
+<p><b>Input:</b> the full price history, the fixed fit, and the window length.
+<b>Output:</b> a four-column frame with the same index as the prices: the gap, its trailing
+average, its trailing spread, and its score. <b>Role:</b> the trading rule uses only
+<code>z_score</code>.</p></div>
 
 <div class="box def"><span class="k">The formula &mdash; the score, exactly as the code builds it</span>
 <p>$$\mu_{t-1}=\frac{1}{L}\sum_{i=1}^{L}e_{t-i},
@@ -539,12 +524,12 @@ the only thing the trading rule looks at.</p></div>
 \sigma_{t-1}=\sqrt{\frac{1}{L-1}\sum_{i=1}^{L}\bigl(e_{t-i}-\mu_{t-1}\bigr)^2},
 \qquad
 z_t=\frac{e_t-\mu_{t-1}}{\sigma_{t-1}}$$</p>
-<p class="fnote">$e_t$ is today's gap in US dollars, from the previous section. $L=60$ is
-<code>rolling_window</code>. The sums run from $i=1$, not $i=0$: the window is
-$e_{t-60}$ through $e_{t-1}$ and stops one day short of today. The $L-1$ divisor is the
-sample standard deviation, which is what <code>ddof=1</code> selects; <code>ddof</code> stands
-for delta degrees of freedom. $z_t$ is a pure number with no units: it says how many
-trailing standard deviations today's gap sits away from the trailing average.</p></div>
+<p class="fnote">$e_t$ is today's gap in US dollars. $L=60$ is
+<code>rolling_window</code>. The sums start at $i=1$, not $i=0$, so the window runs from $e_{t-60}$
+through $e_{t-1}$ and excludes today. The $L-1$ divisor gives the sample standard deviation;
+<code>ddof=1</code> selects it, where <code>ddof</code> means delta degrees of freedom. $z_t$
+has no units: it says how many trailing standard deviations today's gap is from the trailing
+average.</p></div>
 
 <div class="box data"><span class="k">Sample data</span>
 <div class="io stack">
@@ -563,7 +548,7 @@ trailing standard deviations today's gap sits away from the trailing average.</p
 2023-10-12       -3.9904           -4.5270           0.7505   0.7149   &lt;- checked below
 2023-10-13       -4.5047           -4.5188           0.7537   0.0187</pre></div>
 </div>
-<p><b>One row checked by hand.</b> On 2023-10-12 the gap is
+<p><b>One row checked by hand.</b> On 2023-10-12, the gap is
 $e_t = 49.0459 - 4.573179 - 0.334505 \times 144.8800 = -3.9904$ US dollars. The 60-day window
 behind it runs from 2023-07-19 to 2023-10-11 inclusive, contains 60 values, and has average
 $-4.526974$ and spread $0.750488$. So
@@ -572,27 +557,24 @@ $z_t = (-3.9904 - (-4.526974)) / 0.750488 = 0.71493$, which matches the
 confirmed not to contain 2023-10-12 itself.</p></div>
 
 <div class="box why"><span class="k">Why the shift comes before the rolling, not after</span>
-<p>Two orderings look similar and one is wrong. The code writes
-<code>residual.shift(1).rolling(60).mean()</code>: shift first, then average. That gives the
-average of days $t-60$ through $t-1$. Writing
-<code>residual.rolling(60).mean().shift(1)</code> instead would give the average of days
-$t-61$ through $t-2$, a needless extra day of staleness. Writing plain
-<code>residual.rolling(60).mean()</code> would include today, which lets today's gap pull its
-own benchmark toward itself and shrinks every score.</p></div>
+<p>The two orders look similar, but only one is correct. The code writes
+<code>residual.shift(1).rolling(60).mean()</code>: shift first, then average. This averages
+days $t-60$ through $t-1$. Writing <code>residual.rolling(60).mean().shift(1)</code> would
+use days $t-61$ through $t-2$, one day too early. Writing
+<code>residual.rolling(60).mean()</code> would include today and pull today's benchmark toward
+today's gap, shrinking every score.</p></div>
 
 <div class="box warn"><span class="k">Trap: the rolling window happily crosses the training boundary</span>
-<p>On the first backtest day the sixty-day window sits almost entirely inside the training
-sample, where the gaps were fitted to average zero by construction. This is not look-ahead,
-because every one of those days is genuinely in the past. But it does mean the first few
-weeks of scores are normalised against a period the regression was tuned on, so they are
-slightly better behaved than a live trader would have seen.</p></div>
+<p>On the first backtest day, the sixty-day window is almost all training data, where the
+fitted gaps average zero by construction. This is not look-ahead: every day is in the past.
+But the first few weeks of scores are measured against a period used to fit the regression,
+so they may look better behaved than they would in live trading.</p></div>
 
 <div class="box def"><span class="k">The test that guards this</span>
 <p><code>test_signal_does_not_use_current_or_future_residuals</code> builds a twelve-day price
-frame, computes the signal, then adds 1,000 US dollars to the very last KO price and
-recomputes. It asserts every score except the last one is unchanged, and that even the last
-day's rolling average is unchanged. If anyone ever removed the <code>shift(1)</code>, that
-test would fail immediately.</p></div>
+frame, computes the signal, adds 1,000 US dollars to the last KO price, and computes it again.
+Every score except the last must stay unchanged, as must the last day's rolling average. If
+<code>shift(1)</code> were removed, this test would fail.</p></div>
 
 <h2 id="s06"><span class="sec-no">06</span>Position sizing &mdash; <code>_target_holdings</code></h2>
 
@@ -601,13 +583,13 @@ ko_units = target_gross / (ko_price + abs(beta) * pep_price)
 return side * ko_units, -side * beta * ko_units</pre>
 
 <div class="box gist"><span class="k">In plain words</span>
-<p>Choose how many KO shares to hold so that the two legs together add up to the target
-position size, then set the PEP shares to exactly the mirror image implied by the slope.</p></div>
+<p>Choose the number of KO shares so both legs reach the target position size, then set the PEP
+shares from the fitted slope.</p></div>
 
 <div class="box def"><span class="k">What it does</span>
 <p><b>Input:</b> today's two prices, the slope, a direction of <code>+1</code> or
 <code>-1</code>, and the config. <b>Output:</b> two signed share counts. <b>Role:</b> called
-once per entry inside the backtest loop; nothing else calls it.</p></div>
+once for each entry in the backtest loop; nothing else calls it.</p></div>
 
 <div class="box def"><span class="k">The formula &mdash; the sizing</span>
 <p>$$q_t=\frac{C\cdot G}{P^{KO}_t+\lvert\hat\beta\rvert\,P^{PEP}_t},
@@ -615,11 +597,11 @@ once per entry inside the backtest loop; nothing else calls it.</p></div>
 \qquad n^{PEP}_t=-s_t\,\hat\beta\,q_t$$</p>
 <p class="fnote">$C$ is <code>initial_capital_usd</code>, 100,000 US dollars. $G$ is
 <code>gross_exposure_multiple</code>, 2.0. $P^{KO}_t$ and $P^{PEP}_t$ are the two closing
-prices on the entry day. $\hat\beta$ is the slope from the fit. $s_t$ is the direction:
-$+1$ to bet the gap widens back up, $-1$ to bet it narrows. $q_t$ is a positive share count.
-$n^{KO}_t$ and $n^{PEP}_t$ are the signed holdings, positive for owned and negative for
+prices on the entry day. $\hat\beta$ is the fitted slope. $s_t$ is the direction: $+1$ bets
+the gap widens, and $-1$ bets it narrows. $q_t$ is a positive share count.
+$n^{KO}_t$ and $n^{PEP}_t$ are signed holdings: positive means owned and negative means
 shorted.</p>
-<p>The denominator is chosen so the total position size lands exactly on target:</p>
+<p>The denominator makes the total position size exactly the target:</p>
 <p>$$\lvert n^{KO}_t\rvert P^{KO}_t+\lvert n^{PEP}_t\rvert P^{PEP}_t
 =q_t\bigl(P^{KO}_t+\lvert\hat\beta\rvert P^{PEP}_t\bigr)=C\cdot G$$</p></div>
 
@@ -641,28 +623,26 @@ check: gross market value
                      total = 200000.0000  &lt;- exactly C x G
 ratio 671.026678 / -2006.027514 = -0.334505 = -beta</pre></div>
 </div>
-<p>The score was <span class="pill">+1.5163</span>, meaning the gap was unusually wide, so
-the code bet on it narrowing: <code>side = -1</code>, short KO and long PEP.</p></div>
+<p>The score was <span class="pill">+1.5163</span>, so the gap was unusually wide. The code
+bet on it narrowing: <code>side = -1</code>, short KO, and buy PEP.</p></div>
 
 <div class="box why"><span class="k">Why the absolute value appears in one place and not the other</span>
-<p>The denominator uses <code>abs(beta)</code> because it is adding up position sizes, which
-are never negative. The PEP share count uses the signed <code>beta</code> because if the
-slope were negative the correct hedge would be to own both legs, not to short one. With the
-fitted slope of <code>+0.3345</code> the two happen to agree, but the code stays correct if a
-different pair produced a negative slope.</p></div>
+<p>The denominator uses <code>abs(beta)</code> because it adds position sizes, which are
+always positive. The PEP share count keeps the signed <code>beta</code>: with a negative slope,
+the correct hedge would own both legs rather than short one. The fitted slope is
+<code>+0.3345</code>, but the code also handles a negative slope.</p></div>
 
 <div class="box flag"><span class="k">This position is hedged on the relationship, not on dollars</span>
-<p>At the first entry the KO leg is 101,256 US dollars and the PEP leg is 98,744 US dollars,
-so the position is close to dollar-neutral by coincidence, not by design. The slope of 0.3345
-combined with a PEP price roughly three times the KO price is what makes the two legs come
-out similar. If the price ratio drifted, the position would carry a growing net exposure to
-the market as a whole, and the code would not notice.</p></div>
+<p>At the first entry, the KO leg is 101,256 US dollars and the PEP leg is 98,744 US dollars.
+That near balance is accidental. A slope of 0.3345 and a PEP price about three times the KO
+price make the legs similar in value. If that price ratio changed, the position would gain
+net market exposure and the code would not detect it.</p></div>
 
 <h2 id="s07"><span class="sec-no">07</span>The backtest loop &mdash; <code>run_backtest</code></h2>
 
-<p>This is the only complicated function in the project. It walks the 494 backtest days one
-at a time, carrying five pieces of state: the two share counts, the direction, the entry
-date, and the running trade totals. Each day happens in a fixed order.</p>
+<p>This is the project's most involved function. It processes the 494 backtest days one at a
+time and carries five pieces of state: two share counts, the direction, the entry date, and
+running trade totals. Each day follows the same order.</p>
 
 <div class="mermaid">
 flowchart TD
@@ -680,11 +660,10 @@ flowchart TD
   I --> J
   J --> K["update equity, record the row"]
 </div>
-<p class="fnote">Diamonds are decisions, boxes are actions. The order matters: profit and
-loss is settled before the signal is read, so a decision made today can never earn today's
-price move.</p>
+<p class="fnote">Diamonds are decisions; boxes are actions. The order matters: profit and
+loss is settled before the signal is read, so a decision today cannot earn today's price move.</p>
 
-<h3>Step one &mdash; mark yesterday's position to today's prices</h3>
+<h3>Step one &mdash; value yesterday's position at today's prices</h3>
 
 <pre>if previous_prices is not None:
     gross_pnl = ko_shares * (
@@ -696,14 +675,13 @@ price move.</p>
 <div class="box def"><span class="k">The formula &mdash; daily profit and loss</span>
 <p>$$\Pi_t=n^{KO}_{t-1}\bigl(P^{KO}_t-P^{KO}_{t-1}\bigr)
 +n^{PEP}_{t-1}\bigl(P^{PEP}_t-P^{PEP}_{t-1}\bigr)$$</p>
-<p class="fnote">$\Pi_t$ is the day's gross profit or loss in US dollars, before any cost.
-$n^{KO}_{t-1}$ and $n^{PEP}_{t-1}$ are the share counts decided at yesterday's close, which
-are still what the variables hold at this point in the loop because they have not been
-updated yet. $P^{KO}_t$ and $P^{PEP}_t$ are today's closes. The subscript on the holdings is
-$t-1$ and on the prices is $t$; that mismatch is the whole timing discipline of the
-backtest.</p></div>
+<p class="fnote">$\Pi_t$ is the day's gross profit or loss in US dollars, before costs.
+$n^{KO}_{t-1}$ and $n^{PEP}_{t-1}$ are the share counts set at yesterday's close. They are
+still the current holdings here because the loop has not changed them. $P^{KO}_t$ and
+$P^{PEP}_t$ are today's closes. Holdings use $t-1$ while prices use $t$; that is the
+backtest's timing rule.</p></div>
 
-<h3>Step two &mdash; charge the carrying costs</h3>
+<h3>Step two &mdash; charge the costs of holding the position</h3>
 
 <pre>short_value = max(-ko_shares * float(previous_prices["KO"]), 0.0) + max(
     -pep_shares * float(previous_prices["PEP"]), 0.0
@@ -721,23 +699,21 @@ financing_cost = long_value * config.financing_rate_annual * daily_rate</pre>
 +\max\bigl(n^{PEP}_{t-1}P^{PEP}_{t-1},\,0\bigr)\Bigr]$$</p>
 <p>$$K_t=\frac{c}{10^4}\Bigl[\bigl\lvert n^{KO}_t-n^{KO}_{t-1}\bigr\rvert P^{KO}_t
 +\bigl\lvert n^{PEP}_t-n^{PEP}_{t-1}\bigr\rvert P^{PEP}_t\Bigr]$$</p>
-<p class="fnote">$B_t$ is the short borrow fee, $F_t$ the long financing charge, $K_t$ the
-trading cost, all in US dollars for day $t$. $r_b=0.01$ and $r_f=0.05$ are the annual rates.
-$D=252$ is <code>trading_days_per_year</code>, so dividing by it turns an annual rate into one
-trading day's share. $c=5$ is <code>transaction_cost_bps</code> and $10^4$ converts basis
-points to a fraction. The <code>max</code> terms split the position into the part that is
-shorted and the part that is owned; each leg pays only the rate that applies to it. Note
-$B_t$ and $F_t$ use <em>yesterday's</em> prices and holdings, while $K_t$ uses today's prices
-and the change in holdings decided today.</p></div>
+<p class="fnote">$B_t$ is the short borrow fee, $F_t$ the long financing charge, and $K_t$
+the trading cost, all in US dollars for day $t$. $r_b=0.01$ and $r_f=0.05$ are annual rates.
+$D=252$ is <code>trading_days_per_year</code>; dividing by it gives one trading day's share.
+$c=5$ is <code>transaction_cost_bps</code>, and $10^4$ converts basis points to a fraction.
+The <code>max</code> terms separate short and owned amounts, so each leg pays the applicable
+rate. $B_t$ and $F_t$ use <em>yesterday's</em> prices and holdings; $K_t$ uses today's prices and
+today's change in holdings.</p></div>
 
 <div class="box def"><span class="k">The formula &mdash; the account</span>
 <p>$$E_t=E_{t-1}+\Pi_t-B_t-F_t-K_t,\qquad E_0=C$$</p>
-<p class="fnote">$E_t$ is the marked account value in US dollars at the close of day $t$, and
-$C$ is the starting capital. Every open position is revalued every day, so a losing trade
-shows up in the drawdown while it is still open rather than only when it is finally
-closed.</p></div>
+<p class="fnote">$E_t$ is the account value in US dollars at the close of day $t$, and $C$ is
+starting capital. The code revalues open positions daily, so a loss appears in drawdown while
+the trade is open, not only when it closes.</p></div>
 
-<h3>Step three &mdash; the entry and exit rule</h3>
+<h3>Step three &mdash; apply the entry and exit rule</h3>
 
 <pre>is_last_date = row_number == len(sample) - 1
 if side != 0 and (
@@ -773,23 +749,21 @@ elif (
 \;\text{ and }\;\bigl(\lvert z_t\rvert\le z_{\text{exit}}
 \;\text{ or }\;\lvert z_t\rvert\ge z_{\text{stop}}
 \;\text{ or }\; t=T_{\text{end}}\bigr)$$</p>
-<p class="fnote">$s_t$ is the direction held after the close of day $t$: $+1$, $-1$, or $0$
-for flat. $z_t$ is the score. $z_{\text{entry}}=1.5$, $z_{\text{exit}}=0.2$ and
-$z_{\text{stop}}=2.5$ are the three configured thresholds. $T_{\text{end}}$ is the last
-backtest date. $\operatorname{sign}(z_t)$ is $+1$ when $z_t$ is positive: the minus sign in
-front of it is the bet that an unusually wide gap will narrow.</p></div>
+<p class="fnote">$s_t$ is the direction held after day $t$: $+1$, $-1$, or $0$ for flat.
+$z_t$ is the score. $z_{\text{entry}}=1.5$, $z_{\text{exit}}=0.2$, and
+$z_{\text{stop}}=2.5$ are the configured thresholds. $T_{\text{end}}$ is the last backtest
+date. $\operatorname{sign}(z_t)$ is $+1$ when $z_t$ is positive; the minus sign bets that a
+wide gap will narrow.</p></div>
 
 <div class="box why"><span class="k">Why the entry band has an upper edge as well as a lower one</span>
-<p>The condition is $1.5\le\lvert z_t\rvert&lt;2.5$, not simply $\lvert z_t\rvert\ge 1.5$. A
-gap already past the stop level would otherwise be entered and then immediately stopped out
-the next day, paying two lots of trading cost for nothing. The same value, 2.5, is doing two
-jobs: it is the risk stop and the edge of the tradeable band.</p></div>
+<p>The condition is $1.5\le\lvert z_t\rvert&lt;2.5$, not just $\lvert z_t\rvert\ge 1.5$. A
+gap beyond the stop would otherwise be entered and stopped out the next day, paying two
+trading costs for nothing. The value 2.5 is both the risk stop and the edge of the entry band.</p></div>
 
 <div class="box why"><span class="k">Why the last day is treated specially in both branches</span>
-<p><code>is_last_date</code> forces any open position shut, so the reported profit and loss
-covers only closed positions and no value is left dangling. It also blocks a new entry, since
-a position opened on the final close would be opened and closed in the same instant while
-paying cost twice.</p></div>
+<p><code>is_last_date</code> closes any open position, so reported profit and loss covers every
+position and no value is left out. It also blocks a new entry: a position opened on the final
+close would open and close at once while paying twice.</p></div>
 
 <div class="box data"><span class="k">Sample data</span>
 <div class="io stack">
@@ -812,10 +786,9 @@ $2006.027514\times50.476109 = 101{,}256.4625$ US dollars of shorted stock, times
 $0.01/252$, giving $4.018114$. The financing charge is
 $671.026678\times147.152924 = 98{,}743.5375$ US dollars owned, times $0.05/252$, giving
 $19.591972$.</p>
-<p><b>The critical row is 2023-10-19.</b> The score crossed 1.5 that day and the position was
-opened, but the gross profit and loss on that same row is exactly zero. The position earned
-nothing from the move that triggered it. That single zero is the proof that the timing is
-clean.</p></div>
+<p><b>The critical row is 2023-10-19.</b> The score crossed 1.5 and the position opened, but
+gross profit and loss on that row is exactly zero. The position earned nothing from the move
+that triggered it. That zero confirms the timing.</p></div>
 
 <div class="box data"><span class="k">Sample data &mdash; the trade ledger</span>
 <div class="io stack">
@@ -835,31 +808,28 @@ clean.</p></div>
 11  2025-07-09  2025-07-17   long residual       stop loss             8   -4434.43   367.92  -4802.34
 12  2025-07-29  2025-09-30   long residual   end of sample            63   -3177.34  1362.26  -4539.60</pre></div>
 </div>
-<p>Ten of the thirteen trades are short-the-gap, because the gap spent most of the test
-period above its trailing average and kept going. Trade 10 is the clearest failure of the
-premise: the exit reason is <span class="pill">mean reversion</span>, meaning the gap did
-come back to within 0.2 of its average, yet the trade still lost 11,832 US dollars. The
-average had moved that far.</p></div>
+<p>Ten of thirteen trades shorted the gap because it stayed above its trailing average for
+most of the test and kept rising. Trade 10 shows the premise failing most clearly: its exit
+reason is <span class="pill">mean reversion</span>, so the gap returned within 0.2 of its
+average, yet the trade still lost 11,832 US dollars. The average had moved too.</p></div>
 
 <div class="box warn"><span class="k">Trap: the trade ledger is derived, not maintained separately</span>
-<p>The daily loop accumulates <code>trade_gross_pnl</code>, <code>trade_cost</code> and
-<code>trade_net_pnl</code> from the same daily numbers that build the equity curve, then
-flushes them into a trade row on the exit day. There is no second set of books that could
-drift out of line with the first. The test
+<p>The daily loop accumulates <code>trade_gross_pnl</code>, <code>trade_cost</code>, and
+<code>trade_net_pnl</code> from the same daily numbers used for the equity curve, then writes
+one trade row on the exit day. There is no separate calculation to drift out of line. The test
 <code>test_costs_reduce_daily_marked_equity</code> asserts
 <code>trades["net_pnl_usd"].sum()</code> equals
 <code>daily["net_pnl_usd"].sum()</code>, so the two views must reconcile exactly.</p></div>
 
 <div class="box warn"><span class="k">Trap: holding_days counts calendar days, not trading days</span>
-<p><code>int((date - entry_date).days)</code> is a plain date subtraction. Trade 1 shows 75
-days but spans roughly 52 trading sessions across the Christmas break. Do not divide a profit
-figure by this column expecting a per-session number.</p></div>
+<p><code>int((date - entry_date).days)</code> subtracts calendar dates. Trade 1 shows 75 days
+but spans about 52 trading sessions across the Christmas break. It is not a per-session
+measure.</p></div>
 
 <div class="box flag"><span class="k">Entry happens at the same close that produced the signal</span>
-<p>The score on 2023-10-19 is built from that day's closing prices, and the position is sized
-using those same closing prices. In practice you would have to submit a market-on-close order
-before knowing the closing print, or trade the following open. The gross profit and loss
-timing is correct either way, but the entry price is a touch optimistic.</p></div>
+<p>The score and position size on 2023-10-19 use that day's close. In practice, a trader would
+submit a market-on-close order before knowing the close or trade at the next open. The profit
+and loss timing is correct, but the entry price is slightly optimistic.</p></div>
 
 <h2 id="s08"><span class="sec-no">08</span>The summary numbers &mdash; the <code>metrics</code> dictionary</h2>
 
@@ -881,15 +851,14 @@ sharpe = (
 S=\frac{\bar r}{s_r}\sqrt{D},
 \qquad
 DD_t=\frac{E_t}{\max\bigl(C,\;\max_{u\le t}E_u\bigr)}-1$$</p>
-<p class="fnote">$r_t$ is the day's return as a fraction of the account value at yesterday's
-close; on the first day the denominator falls back to the starting capital $C$. $\bar r$ is
-the average daily return and $s_r$ its sample standard deviation across the 494 days.
-$\sqrt{D}$ with $D=252$ turns a daily figure into a yearly one, because independent daily
-returns add up in variance, so their spread grows with the square root of the number of days.
-$S$ is the Sharpe ratio, a ratio of average return to its spread; it uses no risk-free rate,
-so the funding charge inside $F_t$ is doing that job instead. $DD_t$ is the drawdown, the
-fall from the highest account value seen so far, with the starting capital counted as the
-first peak so a strategy that never gets ahead still shows its full loss.</p></div>
+<p class="fnote">$r_t$ is the day's return as a fraction of yesterday's account value; on the
+first day, the denominator is starting capital $C$. $\bar r$ is average daily return and
+$s_r$ its sample standard deviation across 494 days. $\sqrt{D}$ with $D=252$ converts a
+daily figure to a yearly one because independent daily returns grow in variance, so their
+spread grows with the square root of the number of days. $S$ is the Sharpe ratio, average return divided by its spread. It
+uses no risk-free rate, so the funding charge inside $F_t$ takes that place. $DD_t$ is the
+drawdown from the highest account value so far. Starting capital counts as the first peak, so
+a strategy that never gains still shows its full loss.</p></div>
 
 <div class="box data"><span class="k">Sample data &mdash; the printed output</span>
 <div class="io stack">
@@ -911,22 +880,21 @@ total_return: -0.462283
 annualized_sharpe: -1.768451
 maximum_drawdown: -0.473125</pre></div>
 </div>
-<p>Two figures are worth pausing on. The strategy lost 34,869 US dollars before any cost, so
-this is not a case of a good idea eaten by friction: the premise itself failed. And the
-11,359 US dollars of cost is a quarter of the total damage, most of it financing on the owned
-leg at 5 percent a year on roughly 100,000 US dollars held for most of two years.</p></div>
+<p>The strategy lost 34,869 US dollars before costs, so trading friction did not cause the
+failure; the premise failed first. Costs added 11,359 US dollars, about a quarter of the total
+loss. Most came from financing the owned leg at 5 percent a year on roughly 100,000 US dollars
+for most of two years.</p></div>
 
 <div class="box why"><span class="k">Why the peak is clipped at the starting capital</span>
 <p><code>cummax().clip(lower=initial_capital)</code> counts day zero as a peak. Without the
-clip, an account that fell on day one and never recovered would measure its drawdown from
-that already-reduced level and report a smaller loss than actually occurred. Here the reported
-maximum drawdown of 47.3 percent is measured from the full 100,000 US dollars.</p></div>
+clip, an account that fell on day one and never recovered would measure drawdown from that
+lower value and understate the loss. Here the reported maximum drawdown of 47.3 percent uses
+the full 100,000 US dollars.</p></div>
 
 <div class="box flag"><span class="k">The Sharpe ratio here is a description, not a decision tool</span>
-<p>With 494 daily observations and one strategy, a Sharpe ratio of -1.77 says the losses were
-persistent rather than one bad week. It carries no information about a future period, and
-because the study already failed its statistical gate, no reader should treat it as a ranking
-of anything.</p></div>
+<p>With 494 daily observations and one strategy, a Sharpe ratio of -1.77 describes persistent
+losses rather than one bad week. It says nothing about a future period. The study also failed
+its statistical gate, so this number should not rank anything.</p></div>
 
 <h2 id="s09"><span class="sec-no">09</span>Entry points &mdash; <code>run_pipeline</code>, <code>cli.main</code>, the script</h2>
 
@@ -943,57 +911,51 @@ fit = fit_cointegration(training)
 result = run_backtest(prices, fit, config)</pre>
 
 <div class="box gist"><span class="k">In plain words</span>
-<p>Take every price strictly before the backtest starts, keep the most recent five thousand of
-them, fit the line on those and only those, then run the strategy on the full history so the
-rolling window has something to look back at.</p></div>
+<p>Take prices strictly before the backtest, keep the latest five thousand, fit the line only on them,
+then run the strategy on the full history so the rolling window has enough earlier data.</p></div>
 
 <div class="box why"><span class="k">Why this is where look-ahead would have crept in, and does not</span>
-<p>These four lines are the whole separation between what the model knew and what it was
-tested on. <code>prices.index &lt; config.backtest_start</code> is a strict comparison, so
-2023-10-11 itself is excluded from training. <code>.tail(5000)</code> then takes the most
-recent five thousand of those, ending 2023-10-10. The resulting <code>fit</code> is passed
-into <code>run_backtest</code> as a frozen object and is never recomputed inside the loop.
-Note that <code>run_backtest</code> receives the <em>full</em> price history, not the training
-slice: that is deliberate, because the rolling window on the first backtest day needs sixty
-prior days. Those prior days are all in the past, so no future information enters.</p></div>
+<p>These four lines separate model information from test information.
+<code>prices.index &lt; config.backtest_start</code> is strict, so 2023-10-11 is excluded from
+training. <code>.tail(5000)</code> then selects the latest 5,000 rows, ending 2023-10-10.
+The resulting <code>fit</code> is passed to <code>run_backtest</code> and never recomputed.
+<code>run_backtest</code> receives the <em>full</em> price history because the first backtest
+day needs sixty earlier days for its rolling window. Those days are all in the past.</p></div>
 
 <div class="box warn"><span class="k">Trap: the length check turns silent truncation into an error</span>
-<p><code>.tail(5000)</code> on a shorter history returns whatever exists, without complaint.
-The strategy would then quietly be fitted on, say, 800 days while the configuration still
-claimed 5,000. The equality check catches that. This is the only guard of its kind in the
-pipeline and it is the right place for it.</p></div>
+<p><code>.tail(5000)</code> on a shorter history returns whatever exists without complaint. The
+strategy could then fit on 800 days while the config still says 5,000. The equality check
+catches that mismatch at the pipeline boundary.</p></div>
 
 <div class="box def"><span class="k">The three ways to run it</span>
 <p><b>Installed command:</b> <code>uv run statarb-pipeline</code>, declared in
 <code>pyproject.toml</code> as <code>statarb_cointegration.cli:main</code>. <b>Script:</b>
-<code>uv run python scripts/run_pipeline.py</code>, a six-line file that imports the same
-<code>main</code>. <b>Library:</b> <code>from statarb_cointegration.pipeline import
-run_pipeline</code>, which is what <code>notebooks/demo.ipynb</code> does in a single cell.
-All three take an optional <code>--config</code> path, and all three write the same three CSV
-files.</p></div>
+<code>uv run python scripts/run_pipeline.py</code>, which imports the same <code>main</code>.
+<b>Library:</b> <code>from statarb_cointegration.pipeline import
+run_pipeline</code>, which <code>notebooks/demo.ipynb</code> calls in one cell. All three accept an optional
+<code>--config</code> path and write the same three CSV files.</p></div>
 
 <div class="box def"><span class="k">What lands on disk</span>
-<p><code>outputs/tables/daily_backtest.csv</code>, 494 rows and 12 columns of daily state.
-<code>outputs/tables/trades.csv</code>, 13 rows of completed trades.
-<code>outputs/tables/summary.csv</code>, 16 metric rows written by hand with an f-string
-rather than through pandas. The whole <code>outputs/</code> folder is in
-<code>.gitignore</code>, so running the pipeline never dirties the repository.</p></div>
+<p><code>outputs/tables/daily_backtest.csv</code>: 494 rows and 12 columns of daily state.
+<code>outputs/tables/trades.csv</code>: 13 completed trades.
+<code>outputs/tables/summary.csv</code>: 16 metric rows written with an f-string rather than
+through pandas. The entire <code>outputs/</code> folder is in <code>.gitignore</code>, so the
+pipeline does not modify the repository.</p></div>
 
 <h2 id="s10"><span class="sec-no">10</span>The chart script &mdash; <code>blog/generate_charts.py</code></h2>
 
 <div class="box gist"><span class="k">In plain words</span>
-<p>A separate script that imports the same research functions, runs them on the blog's own
-frozen copy of the prices, and produces three figures plus two frozen CSV files that the
-article quotes.</p></div>
+<p>A separate script imports the same research functions, runs them on the blog's frozen price
+copy, and produces three figures plus two frozen CSV files used by the article.</p></div>
 
 <div class="box def"><span class="k">What it does</span>
 <p><b>Input:</b> <code>blog/data/ko_pep_adjusted_close.parquet</code> and the shared
-<code>config.toml</code>. <b>Output:</b> three PNG files in <code>blog/images/</code> and two
-CSV files in <code>blog/data/</code>. <b>Role:</b> the article's evidence. It does not feed
-back into the pipeline.</p></div>
+<code>config.toml</code>. <b>Output:</b> three portable network graphics (PNG) files in
+<code>blog/images/</code> and two CSV files in <code>blog/data/</code>. <b>Role:</b> evidence for
+the article. It does not feed back into the pipeline.</p></div>
 
-<p>The interesting part is <code>estimate_period</code>, which refits the same regression on
-three different windows to show the slope moving:</p>
+<p><code>estimate_period</code> refits the same regression on three windows to show how the
+slope moves:</p>
 
 <pre>estimates = [
     estimate_period("20-year training", training),
@@ -1004,75 +966,69 @@ three different windows to show the slope moving:</p>
 ]</pre>
 
 <div class="box why"><span class="k">Why refitting on the test window here is not cheating</span>
-<p>The third estimate is fitted on the backtest period itself, which would be a serious error
-if it fed a trading decision. It does not. The <code>fit</code> handed to
-<code>run_backtest</code> on the line above comes only from <code>training</code>. The three
-estimates exist solely to be drawn as three bars on a chart showing that the relationship was
-unstable. This is an after-the-fact diagnostic, and both the README and
-<code>GUIDE_OVERVIEW.md</code> say so.</p></div>
+<p>The third estimate uses the backtest period itself. That would be wrong if it informed a
+trade, but it does not. The <code>fit</code> passed to <code>run_backtest</code> comes only from
+<code>training</code>. The three estimates are only chart data showing that the relationship
+was unstable. They are an after-the-fact diagnostic, as the README and
+<code>GUIDE_OVERVIEW.md</code> state.</p></div>
 
 <div class="box flag"><span class="k">Chart windows are hard-coded</span>
-<p>The dates <code>"2021-10-11"</code>, <code>"2023-10-10"</code> and, inside
-<code>plot_residual</code>, <code>"2021-01-01"</code> are written into the script rather than
-read from <code>config.toml</code>. They are presentation choices, so nothing computed depends
-on them, but changing <code>backtest_start</code> in the settings file would leave the
-"Prior 2 years" bar labelled wrongly.</p></div>
+<p>The dates <code>"2021-10-11"</code>, <code>"2023-10-10"</code>, and, inside
+<code>plot_residual</code>, <code>"2021-01-01"</code> are written in the script rather than
+read from <code>config.toml</code>. They only affect presentation. But changing
+<code>backtest_start</code> would leave the "Prior 2 years" bar with the wrong label.</p></div>
 
-<h2 id="s11"><span class="sec-no">11</span>Fixes applied in this pass</h2>
+<h2 id="s11"><span class="sec-no">11</span>Fixes in this pass</h2>
 
 <div class="box def"><span class="k">One defect found and fixed</span>
 <p><b>File:</b> <code>src/statarb_cointegration/research.py</code>, in the <code>metrics</code>
 dictionary at the end of <code>run_backtest</code>.</p>
-<p><b>The problem.</b> The win rate was computed as
-<code>float((trade_frame["net_pnl_usd"] &gt; 0.0).mean())</code>. When no trade ever completes,
-<code>pd.DataFrame([])</code> has no columns at all, so that lookup raises
-<code>KeyError: 'net_pnl_usd'</code> and the whole run dies before writing anything. Any
-configuration with a high enough <code>entry_z</code>, a short enough backtest window, or a
-quiet enough period would hit it, and the error message points at a missing column rather
-than at the real cause.</p>
+<p><b>The problem.</b> The win rate used
+<code>float((trade_frame["net_pnl_usd"] &gt; 0.0).mean())</code>. With no completed trades,
+<code>pd.DataFrame([])</code> has no columns, so the lookup raises
+<code>KeyError: 'net_pnl_usd'</code> and the run stops before writing output. A high
+<code>entry_z</code>, a short backtest, or a quiet period could trigger it. The error names a
+missing column rather than the real cause.</p>
 <p><b>Reproduced before the fix.</b> Running <code>run_backtest</code> with
 <code>entry_z = 50</code> on a twenty-day toy price frame raised
 <code>KeyError: 'net_pnl_usd'</code>.</p>
-<p><b>The fix.</b> Guard the empty case and report an undefined win rate rather than
-inventing a zero, which would be wrong in a different way:</p>
+<p><b>The fix.</b> Handle the empty case and report an undefined win rate rather than the
+misleading value zero:</p>
 <pre>"completed_trades": float(len(trade_frame)),
 <span class="c"># An empty ledger has no columns, so the win rate is undefined rather</span>
 <span class="c"># than zero. Reporting NaN keeps a no-trade configuration runnable.</span>
 "win_rate": float((trade_frame["net_pnl_usd"] &gt; 0.0).mean())
 if not trade_frame.empty
 else np.nan,</pre>
-<p><b>After the fix.</b> The same toy run returns
-<code>win_rate = nan, completed_trades = 0.0</code>. All four unit tests still pass,
-<code>ruff check</code> is clean, and every number the real pipeline prints is byte-identical
-to before, because the real run has 13 trades and never touches the new branch.</p></div>
+<p><b>After the fix.</b> The toy run returns
+<code>win_rate = nan, completed_trades = 0.0</code>. All four unit tests pass,
+<code>ruff check</code> is clean, and the real pipeline prints the same bytes because it has 13
+trades and never uses this branch.</p></div>
 
 <div class="box def"><span class="k">One environment repair, no code change</span>
-<p>The project virtual environment had a half-written NumPy and SciPy installation, so
+<p>The project environment had incomplete NumPy and SciPy installations, so
 <code>uv run statarb-pipeline</code> failed at import with "Something is wrong with the numpy
-installation". <code>uv sync --reinstall</code> fixed it. Nothing in the repository was
-involved; every number on this page was produced after the repair.</p></div>
+installation". <code>uv sync --reinstall</code> fixed it. No repository file changed; every
+number on this page was produced afterward.</p></div>
 
 <div class="box def"><span class="k">Checked and found correct &mdash; no change made</span>
 <ul>
-<li><b>Look-ahead in the fit.</b> Training is <code>prices.index &lt; backtest_start</code>,
-a strict comparison, ending 2023-10-10. The fit is frozen and never recomputed inside the
-loop.</li>
-<li><b>Look-ahead in the z-score.</b> The 60-day window for 2023-10-12 was printed and runs
-2023-07-19 to 2023-10-11, sixty values, with today excluded. Verified numerically, not by
-reading the code.</li>
-<li><b>Off-by-one in the profit and loss.</b> The gross figure on the entry day is exactly
-zero, confirmed in the real output at 2023-10-19.</li>
-<li><b>Annualisation.</b> <code>trading_days_per_year</code> is 252 everywhere: dividing the
-two annual rates, and as $\sqrt{252}$ in the Sharpe ratio. No mixed conventions.</li>
+<li><b>Look-ahead in the fit.</b> Training uses <code>prices.index &lt; backtest_start</code>,
+ending 2023-10-10. The fit stays fixed inside the loop.</li>
+<li><b>Look-ahead in the z-score.</b> The printed 60-day window for 2023-10-12 runs from
+2023-07-19 to 2023-10-11 and excludes today. This was checked numerically.</li>
+<li><b>Profit-and-loss timing.</b> The entry-day gross figure is exactly zero, confirmed in
+the real output at 2023-10-19.</li>
+<li><b>Annualisation.</b> <code>trading_days_per_year</code> is 252 throughout: it divides the
+two annual rates and appears as $\sqrt{252}$ in the Sharpe ratio.</li>
 <li><b>Mutable default arguments.</b> None exist. Every default is <code>None</code> or a
 scalar.</li>
-<li><b>Swallowed exceptions.</b> There is no <code>try</code> or <code>except</code> anywhere
-in the package.</li>
-<li><b>Relative paths.</b> Both <code>config.py</code> and
-<code>blog/generate_charts.py</code> derive their roots from <code>__file__</code>, so the
-working directory does not matter.</li>
+<li><b>Swallowed exceptions.</b> The package contains no <code>try</code> or
+<code>except</code>.</li>
+<li><b>Relative paths.</b> <code>config.py</code> and <code>blog/generate_charts.py</code>
+derive their roots from <code>__file__</code>, so the working directory does not matter.</li>
 <li><b>Hedge sign.</b> <code>_target_holdings</code> uses the signed slope for the PEP leg and
-the absolute slope only for the size, which stays correct for a negative slope.</li>
+the absolute slope only for position size, so a negative slope still works.</li>
 </ul></div>
 
 <h2 id="s12"><span class="sec-no">12</span>Call graph</h2>
@@ -1103,28 +1059,28 @@ blog/generate_charts.py                     <span class="c"># separate, its own 
     ├── research.compute_causal_signal()     <span class="c"># inside plot_residual</span>
     └── plot_residual / plot_parameter_drift / plot_equity</pre>
 
-<p class="fnote">Nothing in <code>research.py</code> calls anything in <code>pipeline.py</code>
-or <code>config.py</code> beyond the <code>ResearchConfig</code> type. The dependency arrow
-points one way only, which is why the tests can construct a config by hand and call
-<code>run_backtest</code> with no files present.</p>
+<p class="fnote"><code>research.py</code> does not call <code>pipeline.py</code> or
+<code>config.py</code>, apart from using the <code>ResearchConfig</code> type. Dependencies
+point one way, so tests can build a config by hand and call <code>run_backtest</code> with no
+files.</p>
 
 <h2 id="s13"><span class="sec-no">13</span>Edge cases</h2>
 
 <div class="scroll">
 <table>
-<thead><tr><th>Situation</th><th>What would go wrong</th><th>What handles it</th></tr></thead>
+<thead><tr><th>Situation</th><th>Failure</th><th>Handling</th></tr></thead>
 <tbody>
-<tr><td>A date appears twice in the parquet</td><td><code>signal.at[date, "z_score"]</code> returns an array; <code>float()</code> raises far from the cause</td><td><code>load_prices</code> checks <code>index.has_duplicates</code> and raises a clear message <span class="chip c-bug">guarded</span></td></tr>
-<tr><td>A missing or non-positive price</td><td>A negative price flips the sign of a market value, so a short leg would be charged the long financing rate</td><td>Same check in <code>load_prices</code> <span class="chip c-bug">guarded</span></td></tr>
-<tr><td>Fewer than 5,000 days of history before the split</td><td><code>.tail(5000)</code> silently returns fewer rows and the fit is quietly wrong</td><td><code>run_pipeline</code> compares the length and raises <span class="chip c-bug">guarded</span></td></tr>
-<tr><td>Backtest dates that select no rows</td><td>An empty loop, then a crash building the daily frame</td><td><code>run_backtest</code> raises "The configured backtest interval contains no prices" <span class="chip c-bug">guarded</span></td></tr>
-<tr><td>Exit threshold set above the entry threshold</td><td>Every position opens and closes the same day, paying cost twice for nothing</td><td><code>ResearchConfig.__post_init__</code> rejects it at load time <span class="chip c-bug">guarded</span></td></tr>
-<tr><td>No trade ever completes</td><td>Crashed with <code>KeyError: 'net_pnl_usd'</code></td><td>Fixed in this pass: <code>win_rate</code> is now NaN <span class="chip c-bug">fixed</span></td></tr>
-<tr><td>A position still open on the last day</td><td>Its profit or loss would never reach the trade ledger, so the two sets of totals would disagree</td><td><code>is_last_date</code> forces the exit, reason "end of sample" <span class="chip c-bug">guarded</span></td></tr>
-<tr><td>The trailing spread is exactly zero</td><td>Division by zero gives an infinite score, which passes the stop test and blocks entry forever</td><td>Nothing guards it. Impossible with real prices, reachable with a synthetic constant series <span class="chip c-drop">unguarded</span></td></tr>
-<tr><td>The score is NaN, for instance too few prior days</td><td>Every comparison against NaN is false, so the loop holds whatever it has and records NaN in the output</td><td>Nothing guards it. The pipeline avoids it by passing full history <span class="chip c-drop">unguarded</span></td></tr>
-<tr><td>Every daily return identical, so their spread is zero</td><td>Sharpe ratio would be a division by zero</td><td><code>if return_std</code> returns NaN instead <span class="chip c-bug">guarded</span></td></tr>
-<tr><td>The account goes to zero or below</td><td>The return denominator would go negative and later returns would flip sign</td><td>Nothing guards it. The 47.3 percent drawdown leaves room, but a larger <code>gross_exposure_multiple</code> could reach it <span class="chip c-drop">unguarded</span></td></tr>
+<tr><td>A date appears twice in the Parquet file</td><td><code>signal.at[date, "z_score"]</code> returns an array; <code>float()</code> fails far from the cause</td><td><code>load_prices</code> checks <code>index.has_duplicates</code> and raises a clear message <span class="chip c-bug">guarded</span></td></tr>
+<tr><td>A price is missing or non-positive</td><td>A negative price reverses a market value, so a short leg could receive the long financing rate</td><td>The same check in <code>load_prices</code> <span class="chip c-bug">guarded</span></td></tr>
+<tr><td>Fewer than 5,000 days precede the split</td><td><code>.tail(5000)</code> returns fewer rows and quietly produces the wrong fit</td><td><code>run_pipeline</code> checks the length and raises <span class="chip c-bug">guarded</span></td></tr>
+<tr><td>Backtest dates select no rows</td><td>An empty loop, followed by a crash while building the daily frame</td><td><code>run_backtest</code> raises "The configured backtest interval contains no prices" <span class="chip c-bug">guarded</span></td></tr>
+<tr><td>Exit threshold is above the entry threshold</td><td>Every position opens and closes the same day, paying twice for no exposure</td><td><code>ResearchConfig.__post_init__</code> rejects it at load time <span class="chip c-bug">guarded</span></td></tr>
+<tr><td>No trade completes</td><td>The run crashed with <code>KeyError: 'net_pnl_usd'</code></td><td>Fixed in this pass: <code>win_rate</code> is now NaN <span class="chip c-bug">fixed</span></td></tr>
+<tr><td>A position remains open on the last day</td><td>Its profit or loss would miss the trade ledger, so the two totals would disagree</td><td><code>is_last_date</code> forces an exit with reason "end of sample" <span class="chip c-bug">guarded</span></td></tr>
+<tr><td>The trailing spread is zero</td><td>Division by zero produces an infinite score that passes the stop test and blocks entry</td><td>No guard. Impossible with real prices, but reachable with a constant synthetic series <span class="chip c-drop">unguarded</span></td></tr>
+<tr><td>The score is NaN, such as with too few prior days</td><td>All comparisons with NaN are false, so the loop keeps its current position and records NaN</td><td>No guard. The pipeline avoids it by passing full history <span class="chip c-drop">unguarded</span></td></tr>
+<tr><td>All daily returns are identical</td><td>The Sharpe ratio divides by zero</td><td><code>if return_std</code> returns NaN instead <span class="chip c-bug">guarded</span></td></tr>
+<tr><td>The account reaches zero or below</td><td>The return denominator becomes negative and later returns change sign</td><td>No guard. The 47.3 percent drawdown leaves room, but a larger <code>gross_exposure_multiple</code> could reach it <span class="chip c-drop">unguarded</span></td></tr>
 </tbody>
 </table>
 </div>
@@ -1133,18 +1089,18 @@ points one way only, which is why the tests can construct a config by hand and c
 
 <div class="scroll">
 <table>
-<thead><tr><th>Construct</th><th>What it does</th><th>The trap</th></tr></thead>
+<thead><tr><th>Construct</th><th>Purpose</th><th>Trap</th></tr></thead>
 <tbody>
-<tr><td><code>beta, alpha = np.polyfit(x, y, 1)</code></td><td>Fits a straight line</td><td>Returns the highest power first, so the slope comes out before the intercept. Reading it as <code>alpha, beta</code> would swap them and produce a hedge ratio of 4.57 instead of 0.33.</td></tr>
-<tr><td><code>coint(y, x)</code> vs <code>adfuller(residual)</code></td><td>Two stationarity tests</td><td>Almost the same statistic, wildly different p-values: 0.087 against 0.225. Only <code>coint</code> corrects for the coefficients having been estimated. Quoting the other one is the classic mistake this project exists to demonstrate.</td></tr>
-<tr><td><code>residual.shift(1).rolling(L)</code></td><td>Trailing statistics excluding today</td><td>Swapping the two calls shifts the window an extra day back; dropping the shift lets today judge itself. Both look reasonable and both are wrong.</td></tr>
-<tr><td><code>ddof=1</code></td><td>Sample standard deviation, divide by $L-1$</td><td>Pandas defaults to <code>ddof=1</code> but NumPy defaults to <code>ddof=0</code>. Being explicit means a reader porting the code to NumPy will not silently change every score by a factor of $\sqrt{60/59}$.</td></tr>
-<tr><td><code>@dataclass(frozen=True, slots=True)</code></td><td>Immutable object with fixed fields</td><td><code>frozen</code> means <code>__post_init__</code> cannot assign normally, which is why the derived paths use <code>object.__setattr__</code>. That line looks like a hack; it is the standard way round this.</td></tr>
-<tr><td><code>max(-shares * price, 0.0)</code></td><td>Splits a position into its shorted part</td><td>With zero shares this returns negative zero, so <code>daily_backtest.csv</code> contains entries like <code>-0.000000</code> in the borrow column. Cosmetic only, the value is zero.</td></tr>
-<tr><td><code>prices.loc[start:end]</code> with strings</td><td>Slices a date index</td><td>Label slicing on a <code>DatetimeIndex</code> includes <em>both</em> endpoints, unlike normal Python slicing. So <code>backtest_end = "2025-09-30"</code> does trade on 30 September.</td></tr>
-<tr><td><code>holding_days</code></td><td>Days a trade was open</td><td>Calendar days, from a plain date subtraction. 75 on trade 1 covers about 52 sessions.</td></tr>
-<tr><td><code>equity_usd.shift(1).fillna(C)</code></td><td>Yesterday's account value</td><td>The daily equity column is the value <em>after</em> that day's profit and loss, so the return denominator has to be the shifted column. Using the unshifted one would understate every return.</td></tr>
-<tr><td><code>float(fit.eg_pvalue &lt;= significance)</code></td><td>The pass or fail flag</td><td>Stored as a float so it fits in a <code>dict[str, float]</code>, printed as <code>0.000000</code>. It is a yes-or-no answer wearing six decimal places.</td></tr>
+<tr><td><code>beta, alpha = np.polyfit(x, y, 1)</code></td><td>Fits a straight line</td><td>Returns the highest power first, so slope comes before intercept. Reading it as <code>alpha, beta</code> swaps them and gives a hedge ratio of 4.57 instead of 0.33.</td></tr>
+<tr><td><code>coint(y, x)</code> vs <code>adfuller(residual)</code></td><td>Two stationarity tests</td><td>The statistics are close, but the p-values are 0.087 and 0.225. Only <code>coint</code> adjusts for estimated coefficients. Quoting the other value is the mistake this project demonstrates.</td></tr>
+<tr><td><code>residual.shift(1).rolling(L)</code></td><td>Trailing statistics excluding today</td><td>Swapping the calls moves the window one extra day back; dropping the shift lets today judge itself. Both alternatives look reasonable but are wrong.</td></tr>
+<tr><td><code>ddof=1</code></td><td>Sample standard deviation, divide by $L-1$</td><td>Pandas defaults to <code>ddof=1</code>, while NumPy defaults to <code>ddof=0</code>. Being explicit prevents a NumPy port from changing every score by $\sqrt{60/59}$.</td></tr>
+<tr><td><code>@dataclass(frozen=True, slots=True)</code></td><td>Immutable object with fixed fields</td><td><code>frozen</code> prevents normal assignment in <code>__post_init__</code>, so derived paths use <code>object.__setattr__</code>. That is the standard way to set them.</td></tr>
+<tr><td><code>max(-shares * price, 0.0)</code></td><td>Finds the shorted part of a position</td><td>With zero shares it returns negative zero, so <code>daily_backtest.csv</code> contains <code>-0.000000</code> in the borrow column. The value is still zero.</td></tr>
+<tr><td><code>prices.loc[start:end]</code> with strings</td><td>Slices a date index</td><td>Label slicing on a <code>DatetimeIndex</code> includes <em>both</em> endpoints, unlike normal Python slicing. Thus <code>backtest_end = "2025-09-30"</code> includes 30 September.</td></tr>
+<tr><td><code>holding_days</code></td><td>Days a trade was open</td><td>Calendar days from date subtraction. The 75 days in trade 1 cover about 52 sessions.</td></tr>
+<tr><td><code>equity_usd.shift(1).fillna(C)</code></td><td>Yesterday's account value</td><td>Daily equity is the value <em>after</em> that day's profit and loss, so returns use the shifted column. The unshifted column would understate every return.</td></tr>
+<tr><td><code>float(fit.eg_pvalue &lt;= significance)</code></td><td>Pass or fail flag</td><td>It is stored as a float for <code>dict[str, float]</code> and printed as <code>0.000000</code>: a yes-or-no result with six decimal places.</td></tr>
 </tbody>
 </table>
 </div>
@@ -1153,17 +1109,17 @@ points one way only, which is why the tests can construct a config by hand and c
 
 <div class="scroll">
 <table>
-<thead><tr><th>The question</th><th>The answer</th></tr></thead>
+<thead><tr><th>Question</th><th>Answer</th></tr></thead>
 <tbody>
-<tr><td>"Show me where you stop the model seeing the future."</td><td>Three places. <code>pipeline.py</code> line 28, <code>prices.index &lt; config.backtest_start</code>, a strict comparison so the fit ends 2023-10-10. <code>research.py</code> line 161, <code>residual.shift(1)</code> before the rolling call. And the loop order in <code>run_backtest</code>, where profit and loss is settled before the score is read, so the entry day earns exactly zero.</td></tr>
-<tr><td>"Prove the z-score window excludes today."</td><td>It was printed rather than argued. For 2023-10-12 the window runs 2023-07-19 to 2023-10-11, contains 60 values, averages -4.526974 with spread 0.750488, and does not contain 2023-10-12. The reported score of 0.7149 reproduces from those numbers by hand.</td></tr>
-<tr><td>"Did you pick KO and PEP after seeing that they work?"</td><td>They do not work, so there is no favourable selection to hide. But the pair, the 5,000-day training length and the October 2023 split date were all chosen with the full history visible. That is a real limitation and it is stated in the next section rather than explained away.</td></tr>
-<tr><td>"Why run a strategy that failed its own test?"</td><td>To put a number on the cost of ignoring the test. The answer is a 46.2 percent loss over two years, of which 34,869 US dollars is before any cost. Both the README and <code>docs/user/README.md</code> label it a diagnostic counterfactual and say not to read it as a recommendation.</td></tr>
-<tr><td>"What happens if I change <code>entry_z</code> to 3.0?"</td><td>Nothing loads, because <code>__post_init__</code> requires <code>entry_z &lt; stop_z</code> and the stop is 2.5. Raise the stop first. With a wider band you get fewer trades, and the sample of thirteen is already too small to say anything statistically.</td></tr>
-<tr><td>"How long does it run?"</td><td>Seconds. The Engle-Granger test on 5,000 rows dominates; the 494-day loop is trivial. There is no reason to optimise anything here.</td></tr>
-<tr><td>"Is the position market-neutral?"</td><td>No, and it is not meant to be. It is sized so the two legs add to 200,000 US dollars and their share ratio matches the fitted slope. At the first entry the legs happen to be 101,256 and 98,744 US dollars, close to balanced by coincidence of the price ratio, not by construction.</td></tr>
-<tr><td>"Where does the 0.334505 hedge ratio come from?"</td><td>It is the slope of KO price on PEP price over 5,000 days ending 2023-10-10. It means owning one KO share is hedged by shorting a third of a PEP share. The intercept of 4.573179 US dollars is the level the line sits at, and it is subtracted out of every residual.</td></tr>
-<tr><td>"Why is the win rate 0.31 when trade 10 exited on mean reversion?"</td><td>Because reverting to the trailing average is not the same as reverting to the level you entered at. Trade 10 hit its exit condition and still lost 11,832 US dollars: over 118 calendar days the trailing average itself had moved past the entry price. That is precisely what a failed stationarity test predicts.</td></tr>
+<tr><td>"Show me where you stop the model seeing the future."</td><td>Three places. In <code>pipeline.py</code> line 28, <code>prices.index &lt; config.backtest_start</code> excludes dates from 2023-10-11 onward, so fitting ends on 2023-10-10. In <code>research.py</code> line 161, <code>residual.shift(1)</code> comes before the rolling call. Finally, <code>run_backtest</code> settles profit and loss before reading the score, so the entry day earns exactly zero.</td></tr>
+<tr><td>"Prove the z-score window excludes today."</td><td>The window was printed. For 2023-10-12 it runs from 2023-07-19 to 2023-10-11, contains 60 values, averages -4.526974 with spread 0.750488, and excludes 2023-10-12. Those numbers reproduce the score 0.7149 by hand.</td></tr>
+<tr><td>"Did you pick KO and PEP after seeing that they work?"</td><td>They do not work, so there is no favourable result to hide. Still, the pair, 5,000-day training length, and October 2023 split were chosen with the full history visible. That limitation is stated in the next section.</td></tr>
+<tr><td>"Why run a strategy that failed its own test?"</td><td>To measure the cost of ignoring the test. The result is a 46.2 percent loss over two years, including a 34,869 US dollar loss before costs. The README and <code>docs/user/README.md</code> call it a diagnostic counterfactual, not a recommendation.</td></tr>
+<tr><td>"What happens if I change <code>entry_z</code> to 3.0?"</td><td>Nothing loads: <code>__post_init__</code> requires <code>entry_z &lt; stop_z</code>, and the stop is 2.5. Raise the stop first. A wider band gives fewer trades, and thirteen trades are already too few for statistical claims.</td></tr>
+<tr><td>"How long does it run?"</td><td>Seconds. The Engle-Granger test on 5,000 rows dominates; the 494-day loop is small. Optimisation is unnecessary.</td></tr>
+<tr><td>"Is the position market-neutral?"</td><td>No. The two legs total 200,000 US dollars and their share ratio matches the fitted slope. At the first entry, the legs happen to be 101,256 and 98,744 US dollars because of the price ratio, not because the position is designed to balance dollars.</td></tr>
+<tr><td>"Where does the 0.334505 hedge ratio come from?"</td><td>It is the slope of KO price on PEP price over 5,000 days ending 2023-10-10. Owning one KO share is hedged by shorting one third of a PEP share. The 4.573179 US dollar intercept is subtracted from every residual.</td></tr>
+<tr><td>"Why is the win rate 0.31 when trade 10 exited on mean reversion?"</td><td>Returning to the trailing average is not the same as returning to the entry level. Trade 10 met its exit condition but lost 11,832 US dollars: over 118 calendar days, the trailing average had moved past the entry price. That is consistent with the failed stationarity test.</td></tr>
 </tbody>
 </table>
 </div>
@@ -1171,72 +1127,63 @@ points one way only, which is why the tests can construct a config by hand and c
 <h2 id="s16"><span class="sec-no">16</span>Honest limitations</h2>
 
 <div class="box flag"><span class="k">The pair and the split date were chosen with the whole history visible</span>
-<p>This is the structural bias the code cannot fix, and it should not be papered over. KO and
-PEP were selected as a pair, 5,000 training days were selected as a window, and 2023-10-11 was
-selected as the split, all by a person who could already see every price through 2025. Nothing
-inside the pipeline is capable of undoing that. The mitigating fact is the direction of the
-result: the study reports a failed test and a 46.2 percent loss, which is the opposite of what
-a favourably chosen sample produces. A selection bias that hurts your own conclusion is not
-much of a bias. But if this design were reused on a pair that <em>did</em> pass, the same
-choices would make that pass much less impressive than it looks, and the honest fix is a
-proper out-of-sample protocol: choose the pair and the window on one period, then test on a
-period you have not looked at.</p></div>
+<p>This is a structural bias the code cannot fix. A person who could see prices through 2025
+selected KO and PEP, the 5,000-day window, and the 2023-10-11 split. The pipeline cannot undo
+those choices. The result is unfavourable—a failed test and a 46.2 percent loss—but that does
+not remove the bias. If this design were reused on a pair that <em>did</em> pass, the same
+choices would make that result less convincing. The proper out-of-sample fix is to choose the
+pair and window in one period, then test them in a period not yet viewed.</p></div>
 
 <div class="box flag"><span class="k">One pair, one window, one strategy &mdash; no statistical power either way</span>
-<p>Thirteen trades over 494 days cannot support any claim about the strategy's expected
-return. The Sharpe ratio of -1.77 and the win rate of 0.31 are descriptions of what happened,
-not estimates of anything. The one number in the whole study that carries real statistical
-weight is the Engle-Granger p-value of 0.2255, computed on 5,000 observations, and it says the
-premise fails.</p></div>
+<p>Thirteen trades over 494 days cannot support a claim about expected return. The Sharpe ratio
+of -1.77 and win rate of 0.31 describe this sample; they do not estimate future results. The
+Engle-Granger p-value of 0.2255, computed from 5,000 observations, is the study's main
+statistical result, and it does not support the premise.</p></div>
 
 <div class="box flag"><span class="k">Adjusted closes are not tradeable prices</span>
-<p>Every price in the parquet is a split-adjusted and dividend-adjusted close. There is no bid,
-no ask, no size, and no intraday path. The 5 basis point trading cost is a stand-in for a
-spread that is not in the data at all. Market impact, the possibility that KO shares were not
-available to borrow, dividends owed on the shorted leg, and broker-specific margin terms are
-all absent. The README says this plainly and it remains true.</p></div>
+<p>Every Parquet price is a close adjusted for splits and dividends. The data has no bid, ask,
+order size, or intraday path. The 5 basis point trading cost stands in for a spread that is
+not recorded. Market impact, KO borrow availability, dividends owed on the short leg, and
+broker-specific margin terms are also absent.</p></div>
 
 <div class="box flag"><span class="k">Entry is priced at the close that produced the signal</span>
-<p>The score and the entry price come from the same closing print. A real trader would either
-commit to a market-on-close order before seeing that print, or trade the next open. The
-profit-and-loss timing is right, but the fill is optimistic by roughly one day of noise on each
-of the thirteen entries and thirteen exits.</p></div>
+<p>The score and entry price use the same close. A real trader would submit a market-on-close
+order before seeing that close or trade at the next open. The profit-and-loss timing is right,
+but each of the thirteen entries and exits has an optimistic fill by roughly one day of noise.</p></div>
 
 <div class="box flag"><span class="k">The position is sized once and never rebalanced</span>
-<p>Share counts are fixed at entry and held until exit. Trade 10 ran 118 calendar days, over
-which the position size drifted away from 200,000 US dollars as prices moved, and the hedge
-ratio drifted away from 0.3345 in dollar terms. A live implementation would rebalance, pay for
-it, and get a different answer.</p></div>
+<p>Share counts are fixed at entry and held until exit. During trade 10's 118 calendar days,
+price changes moved the position away from 200,000 US dollars and moved its dollar hedge away
+from 0.3345. A live implementation would rebalance, pay for it, and produce a different result.</p></div>
 
 <div class="box flag"><span class="k">The relationship is fitted once and assumed to hold for two years</span>
-<p>The slope comes from data ending October 2023 and is applied unchanged through September
-2025. <code>blog/generate_charts.py</code> exists partly to show the slope was not stable across
-periods. Refitting inside the test window would be look-ahead, so the code is right not to do
-it; but that means the strategy is knowingly trading a relationship that has already been shown
-to move.</p></div>
+<p>The slope uses data ending October 2023 and stays unchanged through September 2025.
+<code>blog/generate_charts.py</code> partly shows that the slope was not stable across periods.
+Refitting inside the test window would be look-ahead, so the code correctly avoids it. The
+trade-off is that the strategy knowingly uses a relationship that has already moved.</p></div>
 
 <h2 id="s17"><span class="sec-no">17</span>How the page was verified</h2>
 
 <div class="scroll">
 <table>
-<thead><tr><th>Check</th><th>How it works</th><th>What it catches</th></tr></thead>
+<thead><tr><th>Check</th><th>Method</th><th>Finds</th></tr></thead>
 <tbody>
-<tr><td>Numbers come from a real run</td><td><code>uv run statarb-pipeline</code> plus a scratch script printing intermediate frames. Every figure in every sample box was copied from that output.</td><td>Invented or stale numbers.</td></tr>
-<tr><td>Three rows checked by hand</td><td>The z-score for 2023-10-12, the entry cost and gross profit for 2023-10-19 and 2023-10-20, and the two carrying costs, were each recomputed from the printed inputs and matched.</td><td>A formula on the page that does not match the code.</td></tr>
-<tr><td>The rolling window was printed, not assumed</td><td>The 60 dates behind 2023-10-12 were listed and the day itself confirmed absent.</td><td>A look-ahead claim taken on faith.</td></tr>
-<tr><td>Unit tests</td><td><code>uv run pytest -q</code>: 4 passed, after the fix as before it.</td><td>A fix that changes behaviour elsewhere.</td></tr>
+<tr><td>Numbers come from a real run</td><td><code>uv run statarb-pipeline</code> and a scratch script printed intermediate frames. Every sample-box figure was copied from that output.</td><td>Invented or stale numbers.</td></tr>
+<tr><td>Three rows checked by hand</td><td>The z-score for 2023-10-12, entry cost and gross profit for 2023-10-19 and 2023-10-20, and both carrying costs were recomputed from the printed inputs.</td><td>A formula that disagrees with the code.</td></tr>
+<tr><td>The rolling window was printed</td><td>The 60 dates before 2023-10-12 were listed, and that day was confirmed absent.</td><td>An unsupported look-ahead claim.</td></tr>
+<tr><td>Unit tests</td><td><code>uv run pytest -q</code>: 4 passed, before and after the fix.</td><td>A fix that changes other behaviour.</td></tr>
 <tr><td>Lint</td><td><code>uv run ruff check src tests scripts blog/generate_charts.py</code>: all checks passed.</td><td>Syntax and style regressions in the edited file.</td></tr>
-<tr><td>Metrics unchanged by the fix</td><td>The pipeline was run before and after; all sixteen printed values are identical.</td><td>A bug fix that quietly moves the research result.</td></tr>
-<tr><td>HTML parses</td><td>This file was parsed with Python's <code>html.parser</code> and reported no unclosed tags.</td><td>An unescaped angle bracket inside a formula, which silently eats the rest of the page.</td></tr>
-<tr><td>Maths and diagrams</td><td>Every display and inline region was checked for balanced braces, and every Mermaid label containing a bracket, dash or comma is quoted.</td><td>A formula that renders as raw source, or a diagram that renders as a text blob.</td></tr>
+<tr><td>Metrics unchanged by the fix</td><td>The pipeline ran before and after; all sixteen printed values matched.</td><td>A fix that changes the research result.</td></tr>
+<tr><td>HTML parses</td><td>Python's <code>html.parser</code> parsed this file without unclosed tags.</td><td>An unescaped angle bracket in a formula that hides the rest of the page.</td></tr>
+<tr><td>Maths and diagrams</td><td>Display and inline regions were checked for balanced braces, and Mermaid labels with brackets, dashes, or commas are quoted.</td><td>Raw formula text or a diagram that fails to render.</td></tr>
 </tbody>
 </table>
 </div>
 
-<p class="foot">Companion reading: <code>README.md</code> for the research claim,
-<code>GUIDE_ROOT.md</code> and <code>GUIDE_OVERVIEW.md</code> for the folder layout and the
-accounting conventions, <code>config.toml</code> for every setting with its own comment, and
-<code>docs/user/README.md</code> for how to run it. The unchanged original notebook sits in
+<p class="foot">See <code>README.md</code> for the research claim,
+<code>GUIDE_ROOT.md</code> and <code>GUIDE_OVERVIEW.md</code> for the folder layout and
+accounting conventions, <code>config.toml</code> for the settings, and
+<code>docs/user/README.md</code> for run instructions. The original notebook remains in
 <code>docs/reference/</code> as history.</p>
 
 </div>
