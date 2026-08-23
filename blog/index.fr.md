@@ -8,11 +8,11 @@ categories: ["Quantitative Research", "Risk Management"]
 
 # Quand une stratégie de cointégration échoue à son propre test
 
-Coca-Cola et Pepsi semblent former une paire naturelle. Leurs activités partagent une clientèle, des intrants et de grands cycles de consommation. Sur 5 000 séances, la régression par moindres carrés ordinaires de leurs cours donne aussi un impressionnant $R^2=0.960$. La première version du projet a interprété cet ajustement comme une preuve de cointégration, puis construit une stratégie de retour à la moyenne.
+Coca-Cola et Pepsi semblent former une paire naturelle. Leurs activités partagent une clientèle, des intrants et de grands cycles de consommation. Sur 5 000 séances, la régression par moindres carrés ordinaires de leurs cours donne aussi $R^2=0.960$. La première version du projet a pris cet ajustement serré pour une preuve de cointégration, puis construit une stratégie de retour à la moyenne.
 
 Le test formel raconte une autre histoire. Sur l'échantillon d'estimation figé, le test d'Engle-Granger donne une p-valeur de 0.225. Au seuil habituel de 5 %, le résidu ne permet pas de rejeter la présence d'une racine unitaire. Le backtest historique corrigé garde une valeur diagnostique, mais il ne valide pas une stratégie de cointégration exploitable.
 
-J'ai reconstruit l'analyse autour de cette distinction. La nouvelle version fige la régression avant la période de test, normalise chaque résidu avec des données retardées, dimensionne les positions avec le même ratio de couverture que le signal, déduit les frais de négociation et de portage, puis valorise le compte chaque jour. Le résultat est plus dur, mais bien plus utile : 13 opérations clôturées perdent 34 869 \$ avant coûts et 46 228 \$ après coûts. Le capital passe de 100 000 \$ à 53 772 \$.
+J'ai reconstruit l'analyse autour de cette distinction. La nouvelle version fige la régression avant la période de test et normalise chaque résidu avec des données retardées. Elle dimensionne les positions avec le même ratio de couverture que le signal, déduit les frais de négociation et de portage, puis valorise le compte chaque jour. Le résultat est difficile à défendre. 13 opérations clôturées perdent 34 869 \$ avant coûts et 46 228 \$ après coûts. Le capital passe de 100 000 \$ à 53 772 \$.
 
 ## Ce que suppose la cointégration
 
@@ -195,7 +195,7 @@ La réestimation par période ne fait pas partie de la règle de trading. Elle s
 
 ![Stabilité de la régression selon les échantillons](images/02_parameter_drift.png)
 
-Les trois panneaux racontent la même histoire sous des angles différents : la pente estimée n'a pas persisté, le pouvoir explicatif a fortement baissé et le résidu est devenu beaucoup plus volatil pendant le test.
+Les trois panneaux concordent. La pente estimée n'a pas persisté, le pouvoir explicatif a fortement baissé et le résidu est devenu beaucoup plus volatil pendant le test.
 
 | Échantillon | $\beta$ | $R^2$ | Volatilité du résidu |
 |---|---:|---:|---:|
@@ -211,7 +211,7 @@ L'étude montre que la spécification KO-PEP initiale ne satisfait pas son hypot
 
 Les clôtures ajustées restent aussi une approximation imparfaite de l'exécution. Elles intègrent les ajustements de splits et de dividendes dans l'historique, alors qu'une vente à découvert réelle paie les dividendes en espèces et se négocie au prix de marché non ajusté. Un backtest destiné à la production devrait employer des opérations sur titres connues à chaque date, des cours acheteur et vendeur exécutables, la disponibilité de l'emprunt et le modèle de financement du courtier.
 
-L'échec du test d'Engle-Granger doit servir de filtre, pas de note de bas de page. Le backtest diagnostique reste dans le projet parce qu'il chiffre la conséquence financière d'un filtre ignoré. Le $R^2$ élevé était bien réel. Il répondait simplement à la mauvaise question.
+Je m'arrêterais à l'échec du test d'Engle-Granger. Le backtest diagnostique reste dans le projet parce qu'il chiffre la décision d'ignorer ce résultat. Le $R^2$ élevé était bien réel. Il répondait à la mauvaise question.
 
 ## Références
 

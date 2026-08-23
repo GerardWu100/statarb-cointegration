@@ -8,11 +8,11 @@ categories: ["Quantitative Research", "Risk Management"]
 
 # When a Cointegration Trade Fails Its Own Test
 
-Coca-Cola and Pepsi look like a natural pair. Their businesses share customers, inputs, and broad consumer cycles. Their stock prices also produced an ordinary least-squares regression with an impressive $R^2=0.960$ over 5,000 trading days. The first version of this project treated that fit as evidence of cointegration and built a mean-reversion trade around it.
+Coca-Cola and Pepsi look like a natural pair. Their businesses share customers, inputs, and broad consumer cycles. Their stock prices also produced an ordinary least-squares regression with $R^2=0.960$ over 5,000 trading days. The first version of this project mistook that close fit for evidence of cointegration and built a mean-reversion trade around it.
 
 The formal test says otherwise. On the frozen training sample, the Engle-Granger test has a p-value of 0.225. At the usual 5% significance level, the residual fails to reject a unit root. A corrected historical backtest is still useful as a diagnostic, but it is not evidence for a deployable cointegration strategy.
 
-I rebuilt the research path around that distinction. The new version freezes the regression before the test period, normalizes each residual with lagged data, sizes the actual holdings from the same hedge ratio as the signal, charges trading and carrying costs, and marks the account every day. The result is harsher and more informative: 13 completed trades lose $34,869 before costs and $46,228 after costs. The ending account value is $53,772 from $100,000 of starting capital.
+I rebuilt the research path around that distinction. The new version freezes the regression before the test period and normalizes each residual with lagged data. It sizes the holdings from the same hedge ratio as the signal, charges trading and carrying costs, and marks the account every day. The result is hard to excuse. 13 completed trades lose $34,869 before costs and $46,228 after costs. The account ends at $53,772 from $100,000 of starting capital.
 
 ## What cointegration claims
 
@@ -195,7 +195,7 @@ Refitting the regression by period is not part of the trading rule. It is a post
 
 ![Regression stability across samples](images/02_parameter_drift.png)
 
-The three panels tell the same story from different angles: the fitted slope did not persist, explanatory power fell sharply, and the residual became much more volatile during the test.
+The three panels agree. The fitted slope did not persist, explanatory power fell sharply, and the residual became much more volatile during the test.
 
 | Sample | $\beta$ | $R^2$ | Residual volatility |
 |---|---:|---:|---:|
@@ -211,7 +211,7 @@ This study establishes that the original KO-PEP specification did not pass its s
 
 Adjusted closes are also an imperfect execution proxy. They incorporate split and dividend adjustments into historical prices, while a live short position pays dividends in cash and trades at unadjusted market prices. A production backtest should use point-in-time corporate actions, executable bid and ask prices, borrow availability, and a broker-specific financing model.
 
-The failed Engle-Granger test should be treated as a gate, not a detail. The diagnostic backtest remains in the project because it shows the financial consequence of ignoring that gate. The attractive $R^2$ was real. It simply answered the wrong question.
+I would stop at the failed Engle-Granger test. The diagnostic backtest remains in the project because it prices the decision to ignore that result. The high $R^2$ was real. It answered the wrong question.
 
 ## References
 
