@@ -76,7 +76,3 @@ statarb-cointegration/
 - Borrow availability, dividends on short stock, market impact, and broker-specific collateral terms are absent.
 - The diagnostic backtest proceeds despite the failed cointegration test to measure the consequence of ignoring that prerequisite. It is not a trading recommendation.
 - Parameter-stability estimates that use the test period are post-mortem diagnostics and never enter prior signals.
-
-## License
-
-All rights reserved. See [LICENSE](LICENSE).
